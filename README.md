@@ -32,7 +32,7 @@ The spreadsheet "src" is as below.
 Call dict.load("src", 1, 2, 2, , dict.reg("^[a-zA-Z]{4}\s"), False, 100)
 
 ```
-**_2. Loop through dict to see the result_**
+**_3. Loop through dict to print the result_**
 ```
     Dim k
     
@@ -42,7 +42,22 @@ Call dict.load("src", 1, 2, 2, , dict.reg("^[a-zA-Z]{4}\s"), False, 100)
 ```
 
 ## API
-Placeholder
+
+
+###**load**###
+_to load the range into dict_
+
+Parameters:
+```
+Byval targSht As String                             'name of the target Sheet. Empty string if target sheet is current sheet.
+ByVal targKeyCol As Integer                         'the column number of the keys in the dictionary
+ByVal targValCol                                    'the column number of the values in the dictionary
+Optional targRowBegine As Variant                   'the first row of the range, default to be 1
+Optional ByVal targRowEnd As Variant                'the last row of the range, default to be the row where key column ends
+Optional ByVal reg As Variant                       'the regular expression to filter the keys
+Optional ByVal ignoreNullVal As Boolean             'ignore if the value is null
+Optional ByVal setNullValto As Variant              'if ignoreNullVal is false, set null to this value
+```
 
 ## Support or Contact
 Having trouble with Pages? You can contact sgfxqw('__at__')gmail('__dot__')com and I will help you sort it out.
