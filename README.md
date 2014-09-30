@@ -60,4 +60,4 @@ Optional ByVal setNullValto As Variant              'if ignoreNullVal is false, 
 ```
 
 ## Support or Contact
-Having trouble with Pages? You can contact sgfxqw('__at__')gmail('__dot__')com and I will help you sort it out.
+Having trouble with this project? You can contact sgfxqw('__at__')gmail('__dot__')com and I will help you sort it out.
