@@ -1,6 +1,8 @@
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc          Util Class Dicts
-'@lastUpdate    23.06.2014
+'@lastUpdate    26.02.2015
+'               add p function to print dict
+'               filterInclude
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -73,7 +75,7 @@ Public Sub ini()
     On Error GoTo Errhandler1
     
     Dim a As Integer
-    a = pDict.count
+    a = pDict.Count
     
       
 Errhandler1:
@@ -110,7 +112,7 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
     End If
     
     If IsMissing(targRowEnd) Then
-        targRowEnd = Cells(Rows.count, targKeyCol).End(xlUp).Row
+        targRowEnd = Cells(Rows.Count, targKeyCol).End(xlUp).Row
     End If
     
     Dim hasReg As Boolean
@@ -289,7 +291,7 @@ Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal t
     End If
     
     If IsMissing(targRowEnd) Then
-        targRowEnd = Cells(Rows.count, targKeyCol).End(xlUp).Row
+        targRowEnd = Cells(Rows.Count, targKeyCol).End(xlUp).Row
     End If
     
     Dim hasReg As Boolean
@@ -378,7 +380,7 @@ Public Sub unload(ByVal shtName As String, ByVal keyCol As Long, ByVal startingR
     
     
     If IsMissing(endRow) Or endRow = 0 Then
-        endRow = Worksheets(shtName).Cells(Rows.count, keyCol).End(xlUp).Row
+        endRow = Worksheets(shtName).Cells(Rows.Count, keyCol).End(xlUp).Row
     End If
     
     Dim c
@@ -479,6 +481,65 @@ Public Function update(ByVal dict2 As Dicts) As Dicts
 
 End Function
 
+Public Function reduce(ByVal sign As String) As Variant
+    Dim res As Variant
+    Dim k
+    
+    
+    If sign = "" Or sign = "+" Then
+        res = 0
+        For Each k In pDict.keys
+            res = res + pDict(k)
+        Next k
+    ElseIf sign = "*" Then
+        res = 1
+        For Each k In pDict.keys
+            res = res * pDict(k)
+        Next k
+    End If
+    
+    reduce = res
+    
+    
+    
+End Function
+
+Public Function filterExklude(ByVal reg As Object) As Dicts
+    
+    Dim k
+    
+    Dim res As Dicts
+    Set res = New Dicts
+    Call res.ini
+    
+    For Each k In pDict.keys
+      If Not reg.test(k) Then
+        res.dict(k) = pDict(k)
+      End If
+    Next k
+    
+    Set filterExklude = res
+    
+End Function
+
+Public Function filterInklude(ByVal reg As Object) As Dicts
+    
+    Dim k
+    
+    Dim res As Dicts
+    Set res = New Dicts
+    Call res.ini
+    
+    For Each k In pDict.keys
+      If reg.test(k) Then
+        res.dict(k) = pDict(k)
+      End If
+    Next k
+    
+    Set filterInklude = res
+    
+End Function
+
 ''''''''''''''''''''
 'set all the elements to a constant
 'default to be 1
@@ -558,6 +619,30 @@ End Function
 
 
 
+
+
+' ______________________________ Print______________________________________________
+
+Public Function p()
+
+    Dim k
+    For Each k In Me.dict.keys
+        Debug.Print k & "  " & Me.dict(k)
+    Next k
+
+End Function
+
+
+Public Function pk()
+
+    Dim k
+    For Each k In Me.dict.keys
+        Debug.Print k
+    Next k
+
+End Function
+
+
 ' ________________________________________Util Functions____________________________________________
 Public Function reg(ByVal pattern As String, Optional ByVal flag As String) As Object
     Dim obj As Object
@@ -592,6 +677,21 @@ Public Function rng(ByVal start As Integer, ByVal ending As Integer)
     Next i
     
     rng = res
+End Function
+
+Public Function toJSON(ByVal k As String) As String
+    Dim res As String
+    res = "{""name"":""" & k & """," & Chr(13)
+    res = res & """children"":[" & Chr(13)
+    
+    Dim ky
+    For Each ky In pDict.keys
+        res = res & "{""name"":""" & Replace(CStr(ky), """", "") & """, " & """size"": " & Replace(CStr(pDict(ky)), ",", ".") & "}," & Chr(13)
+    Next ky
+    
+    toJSON = Left(res, Len(res) - 2) & Chr(13) & "]}"
+    
+    
 End Function
 
 
@@ -662,6 +762,3 @@ errhandler3:
 
 
 End Function
-
-
-
