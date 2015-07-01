@@ -1,8 +1,9 @@
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc          Util Class Dicts
-'@lastUpdate    26.02.2015
+'@lastUpdate    30.06.2015
 '               add p function to print dict
 '               filterInclude
+'               product bug fix
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -481,29 +482,6 @@ Public Function update(ByVal dict2 As Dicts) As Dicts
 
 End Function
 
-Public Function reduce(ByVal sign As String) As Variant
-    Dim res As Variant
-    Dim k
-    
-    
-    If sign = "" Or sign = "+" Then
-        res = 0
-        For Each k In pDict.keys
-            res = res + pDict(k)
-        Next k
-    ElseIf sign = "*" Then
-        res = 1
-        For Each k In pDict.keys
-            res = res * pDict(k)
-        Next k
-    End If
-    
-    reduce = res
-    
-    
-    
-End Function
-
 Public Function filterExklude(ByVal reg As Object) As Dicts
     
     Dim k
@@ -605,10 +583,13 @@ Public Function product(ByVal operand2 As Variant, ByVal operation As String, Op
     
         For Each k In pDict.keys
             If Not isNum Then
-               
-                res.dict(k) = Application.Evaluate(Application.WorksheetFunction.Substitute(pDict(k) & operation & operand2.dict(k), ",", "."))
+               If operand2.dict.exists(k) Then
+                    res.dict(k) = Application.Evaluate(Application.WorksheetFunction.Substitute(pDict(k) & operation & operand2.dict(k), ",", "."))
+               End If
             Else
-                res.dict(k) = Application.Evaluate(pDict(k) & operation & operand2.dict(k))
+                If operand2.dict.exists(k) Then
+                    res.dict(k) = Application.Evaluate(pDict(k) & operation & operand2.dict(k))
+                End If
             End If
         Next k
     End If
@@ -677,21 +658,6 @@ Public Function rng(ByVal start As Integer, ByVal ending As Integer)
     Next i
     
     rng = res
-End Function
-
-Public Function toJSON(ByVal k As String) As String
-    Dim res As String
-    res = "{""name"":""" & k & """," & Chr(13)
-    res = res & """children"":[" & Chr(13)
-    
-    Dim ky
-    For Each ky In pDict.keys
-        res = res & "{""name"":""" & Replace(CStr(ky), """", "") & """, " & """size"": " & Replace(CStr(pDict(ky)), ",", ".") & "}," & Chr(13)
-    Next ky
-    
-    toJSON = Left(res, Len(res) - 2) & Chr(13) & "]}"
-    
-    
 End Function
 
 
