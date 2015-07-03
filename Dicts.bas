@@ -26,6 +26,12 @@ Public Property Let dict(ByVal dict As Object)
     'pIsDictFilled = True
 End Property
 
+' pRngCol
+Public Property Let columnRng(ByVal col As Integer)
+     pRngCol = col
+    'pIsDictFilled = True
+End Property
+
 Public Property Let strictModeReg(mode As Object)
     If Not pStrictMode Then
         pStrictMode = True
@@ -598,7 +604,7 @@ Public Function product(ByVal operand2 As Variant, ByVal operation As String, Op
 End Function
 
 
-Public Function productRng(ByVal operand2 As Variant, ByVal operation As String) As Dicts
+Public Function productRng(ByVal operand2 As Variant, ByVal operation As String, Optional ByVal ifErr As Variant = 0) As Dicts
     Dim k
     Dim i
    
@@ -611,36 +617,38 @@ Public Function productRng(ByVal operand2 As Variant, ByVal operation As String)
         ' if the second operand is numeric
 
         For Each k In pDict.keys
-            res.dict(k) = productArr(pDict(k), operation, operand2)
+            res.dict(k) = productArr(pDict(k), operation, operand2, ifErr)
         Next k
     Else
     
         For Each k In pDict.keys
           
             If operand2.dict.exists(k) Then
-                res.dict(k) = productArr(pDict(k), operation, operand2.dict(k))
+                res.dict(k) = productArr(pDict(k), operation, operand2.dict(k), ifErr)
             End If
 
         Next k
     End If
-   
+    
+    res.columnRng = pRngCol
+    
     Set productRng = res
 
 End Function
 
 
-Private Function productArr(ByVal arr1 As Variant, ByVal operation As String, ByVal arr2 As Variant) As Variant
+Private Function productArr(ByVal arr1 As Variant, ByVal operation As String, ByVal arr2 As Variant, Optional ByVal ifErr As Variant = 0) As Variant
     Dim res
     Dim i
     ReDim res(LBound(arr1) To UBound(arr1))
     
     If IsNumeric(arr2) Then
         For i = LBound(arr1) To UBound(arr1)
-            res(i) = Application.Evaluate(Replace(arr1(i) & operation & arr2, ",", "."))
+            res(i) = Application.WorksheetFunction.IfError(Application.Evaluate(Replace(arr1(i) & operation & arr2, ",", ".")), ifErr)
         Next i
     Else
         For i = LBound(arr1) To UBound(arr1)
-            res(i) = Application.Evaluate(Replace(arr1(i) & operation & arr2(i), ",", "."))
+            res(i) = Application.WorksheetFunction.IfError(Application.Evaluate(Replace(arr1(i) & operation & arr2(i), ",", ".")), ifErr)
         Next i
     End If
     
