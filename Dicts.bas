@@ -1,8 +1,7 @@
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc          Util Class Dicts
-'@lastUpdate    03.07.2015
-'               print function can print array
-'               add productRng
+'@lastUpdate    08.07.2015
+'               add reduce
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -23,12 +22,6 @@ End Property
 
 Public Property Let dict(ByVal dict As Object)
     Set pDict = dict
-    'pIsDictFilled = True
-End Property
-
-' pRngCol
-Public Property Let columnRng(ByVal col As Integer)
-     pRngCol = col
     'pIsDictFilled = True
 End Property
 
@@ -487,6 +480,29 @@ Public Function update(ByVal dict2 As Dicts) As Dicts
 
 End Function
 
+Public Function reduce(ByVal sign As String) As Variant
+    Dim res As Variant
+    Dim k
+    
+    
+    If sign = "" Or sign = "+" Then
+        res = 0
+        For Each k In pDict.keys
+            res = res + pDict(k)
+        Next k
+    ElseIf sign = "*" Then
+        res = 1
+        For Each k In pDict.keys
+            res = res * pDict(k)
+        Next k
+    End If
+    
+    reduce = res
+    
+    
+    
+End Function
+
 Public Function filterExklude(ByVal reg As Object) As Dicts
     
     Dim k
@@ -604,7 +620,7 @@ Public Function product(ByVal operand2 As Variant, ByVal operation As String, Op
 End Function
 
 
-Public Function productRng(ByVal operand2 As Variant, ByVal operation As String, Optional ByVal ifErr As Variant = 0) As Dicts
+Public Function productRng(ByVal operand2 As Variant, ByVal operation As String) As Dicts
     Dim k
     Dim i
    
@@ -617,38 +633,36 @@ Public Function productRng(ByVal operand2 As Variant, ByVal operation As String,
         ' if the second operand is numeric
 
         For Each k In pDict.keys
-            res.dict(k) = productArr(pDict(k), operation, operand2, ifErr)
+            res.dict(k) = productArr(pDict(k), operation, operand2)
         Next k
     Else
     
         For Each k In pDict.keys
           
             If operand2.dict.exists(k) Then
-                res.dict(k) = productArr(pDict(k), operation, operand2.dict(k), ifErr)
+                res.dict(k) = productArr(pDict(k), operation, operand2.dict(k))
             End If
 
         Next k
     End If
-    
-    res.columnRng = pRngCol
-    
+   
     Set productRng = res
 
 End Function
 
 
-Private Function productArr(ByVal arr1 As Variant, ByVal operation As String, ByVal arr2 As Variant, Optional ByVal ifErr As Variant = 0) As Variant
+Private Function productArr(ByVal arr1 As Variant, ByVal operation As String, ByVal arr2 As Variant) As Variant
     Dim res
     Dim i
     ReDim res(LBound(arr1) To UBound(arr1))
     
     If IsNumeric(arr2) Then
         For i = LBound(arr1) To UBound(arr1)
-            res(i) = Application.WorksheetFunction.IfError(Application.Evaluate(Replace(arr1(i) & operation & arr2, ",", ".")), ifErr)
+            res(i) = Application.Evaluate(Replace(arr1(i) & operation & arr2, ",", "."))
         Next i
     Else
         For i = LBound(arr1) To UBound(arr1)
-            res(i) = Application.WorksheetFunction.IfError(Application.Evaluate(Replace(arr1(i) & operation & arr2(i), ",", ".")), ifErr)
+            res(i) = Application.Evaluate(Replace(arr1(i) & operation & arr2(i), ",", "."))
         Next i
     End If
     
@@ -812,6 +826,5 @@ errhandler3:
     Else
         IsReg = False
     End If
-
 
 End Function
