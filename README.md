@@ -23,7 +23,6 @@ The spreadsheet "src" is as below.
 ```
 
      Dim dict As New Dicts
-     Set dict = New Dicts
 
 ```
 **_2. Load the dict_**
@@ -34,11 +33,7 @@ Call dict.load("src", 1, 2, 2, , dict.reg("^[a-zA-Z]{4}\s"), False, 100)
 ```
 **_3. Loop through dict to print the result_**
 ```
-    Dim k
-    
-    For Each k In dict.dict.keys
-        Debug.Print k & "  " & dict.dict(k)
-    Next k
+    dict.p
 ```
 
 ## API
