@@ -1,7 +1,9 @@
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'@desc          Util Class Dicts
-'@lastUpdate    08.07.2015
-'               add reduce
+'@desc                          Util Class Dicts
+'@lastUpdate                    02.09.2015
+'                               add productX
+'                               add loadAddress
+'                               add toJSON
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -85,6 +87,142 @@ Errhandler1:
     
     ' pIsDictFilled = True
 
+End Sub
+
+' to add the shtName just through dict.productX("""'src'!{*}""").p
+Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant)
+    
+  ' store the name of current sheet
+
+    Dim tmpname As String
+    Dim i As Integer
+    
+    tmpname = ActiveSheet.Name
+    If Trim(targSht) = "" Then
+        targSht = tmpname
+    End If
+    
+    Worksheets(targSht).Activate
+    
+    Dim dict As Object
+    Set dict = CreateObject("Scripting.Dictionary")
+    dict.comparemode = vbTextCompare
+    
+    If IsMissing(targRowBegine) Then
+        targRowBegine = 1
+    End If
+    
+    If IsMissing(targRowEnd) Then
+        targRowEnd = Cells(Rows.Count, targKeyCol).End(xlUp).Row
+    End If
+    
+    Dim hasReg As Boolean
+    hasReg = Not IsMissing(reg)
+    Dim Test As Boolean
+    Test = True
+    
+    
+    Dim myKey As Variant
+    Dim myVal As Variant
+    
+    ' pReversedMode
+    Dim startOrder
+    Dim endOrder
+    Dim stepOrder
+    
+    
+    If targRowBegine < targRowEnd Then
+        Dim arr1()
+        arr1 = Range(Cells(targRowBegine, targKeyCol), Cells(targRowEnd, targKeyCol))
+        
+        
+        If pReversedMode Then
+            startOrder = UBound(arr1)
+            endOrder = LBound(arr1)
+            stepOrder = -1
+        Else
+            endOrder = UBound(arr1)
+            startOrder = LBound(arr1)
+            stepOrder = 1
+        End If
+
+        For i = startOrder To endOrder Step stepOrder
+            myKey = Trim(CStr(arr1(i, 1)))
+            myVal = Cells(i, targValCol).Address(0, 0)
+            
+            If myKey <> "" Then
+            
+                If hasReg Then
+                   Test = reg.Test(myKey)
+                End If
+                
+
+                If Test Then
+                     dict(myKey) = myVal
+                End If
+                
+            End If
+            
+            Test = True
+        Next
+    Else
+        Err.Raise 8888, , "endRow must be bigger than startRow!"
+    End If
+   
+    
+    Worksheets(tmpname).Activate
+    
+    
+    ' strictMode
+    Dim k As Variant
+   
+    Dim tmpDict As Object
+    Set tmpDict = CreateObject("scripting.dictionary")
+    tmpDict.comparemode = vbTextCompare
+    
+    If pStrictMode Then
+        If Not IsReg(pStrictModeReg) Then
+        
+            Dim defaultReg As Object
+            Set defaultReg = CreateObject("vbscript.regexp")
+            
+            With defaultReg
+                .pattern = "[_\W]"
+                .Global = True
+            End With
+        
+            For Each k In dict.keys
+                If defaultReg.Test(k) Then
+                    tmpDict(defaultReg.Replace(k, "")) = dict(k)
+                Else
+                    tmpDict(k) = dict(k)
+                End If
+            Next k
+        Else
+            For Each k In dict.keys
+                If pStrictModeReg.Test(k) Then
+                    tmpDict(pStrictModeReg.Execute(k)(0).submatches(0)) = dict(k)
+                Else
+                    tmpDict(k) = dict(k)
+                End If
+            Next k
+        End If
+        Set dict = tmpDict
+    End If
+    
+    
+    
+    If Not pIsDictFilled Then
+        Set pDict = dict
+    Else
+        Dim k1 As Variant
+        For Each k1 In dict.keys
+            pDict(k1) = dict(k1)
+        Next k1
+    End If
+    
+    
+    
 End Sub
 
 
@@ -498,9 +636,6 @@ Public Function reduce(ByVal sign As String) As Variant
     End If
     
     reduce = res
-    
-    
-    
 End Function
 
 Public Function filterExklude(ByVal reg As Object) As Dicts
@@ -620,6 +755,39 @@ Public Function product(ByVal operand2 As Variant, ByVal operation As String, Op
 End Function
 
 
+'''''''''''''''''''
+'@param operation is the string to be converted, placeholder is {*} by default
+'
+'''''''''''''''''''
+
+Public Function productX(ByVal operation As String, Optional ByVal placeholder As String = "{*}", Optional ByVal hasThousandSep As Boolean = True) As Dicts
+    Dim k
+    Dim tmp As String
+    
+    Dim res As Dicts
+    Set res = New Dicts
+    Call res.ini
+
+            If hasThousandSep Then
+                For Each k In pDict.keys
+                    tmp = Replace(pDict(k) & "", ",", ".")
+                    res.dict(k) = Application.Evaluate(Replace(operation, placeholder, tmp))
+                Next k
+            Else
+                For Each k In pDict.keys
+                    res.dict(k) = Application.Evaluate(Replace(operation, placeholder, pDict(k) & ""))
+                Next k
+            End If
+        
+   
+    Set productX = res
+    
+End Function
+
+
+
+
+
 Public Function productRng(ByVal operand2 As Variant, ByVal operation As String) As Dicts
     Dim k
     Dim i
@@ -724,6 +892,21 @@ Public Function pk()
 
 End Function
 
+
+Public Function toJSON(Optional ByVal k As String = "root") As String
+    Dim res As String
+    res = "{""name"":""" & k & """," & Chr(13)
+    res = res & """children"":[" & Chr(13)
+    
+    Dim ky
+    For Each ky In pDict.keys
+        res = res & "{""name"":""" & Replace(CStr(ky), """", "") & """, " & """size"": " & Replace(CStr(pDict(ky)), ",", ".") & "}," & Chr(13)
+    Next ky
+    
+    toJSON = Left(res, Len(res) - 2) & Chr(13) & "]}"
+    
+    
+End Function
 
 ' ________________________________________Util Functions____________________________________________
 Public Function reg(ByVal pattern As String, Optional ByVal flag As String) As Object
