@@ -2,7 +2,7 @@
 '@desc                          Util Class Dicts
 '@lastUpdate                    02.09.2015
 '                               add productX
-'                               add loadAddress
+'                               add loadAddress R1C1Form
 '                               add toJSON
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -90,7 +90,7 @@ Errhandler1:
 End Sub
 
 ' to add the shtName just through dict.productX("""'src'!{*}""").p
-Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant)
+Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant, Optional isR1C1 As Boolean = False)
     
   ' store the name of current sheet
 
@@ -148,7 +148,12 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
 
         For i = startOrder To endOrder Step stepOrder
             myKey = Trim(CStr(arr1(i, 1)))
-            myVal = Cells(i, targValCol).Address(0, 0)
+            
+            If Not isR1C1 Then
+                myVal = Cells(i, targValCol).Address(0, 0)
+            Else
+                myVal = Cells(i, targValCol).Address(ReferenceStyle:=xlR1C1)
+            End If
             
             If myKey <> "" Then
             
