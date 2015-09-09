@@ -1,9 +1,10 @@
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                          Util Class Dicts
-'@lastUpdate                    02.09.2015
+'@lastUpdate                    09.09.2015
 '                               add productX
 '                               add loadAddress R1C1Form
 '                               add toJSON
+'                               add Count, exists, item
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -21,6 +22,9 @@ Public Property Get dict() As Object
     Set dict = pDict
 End Property
 
+Public Property Get Count() As Integer
+    Count = pDict.Count
+End Property
 
 Public Property Let dict(ByVal dict As Object)
     Set pDict = dict
@@ -82,7 +86,7 @@ Public Sub ini()
 Errhandler1:
     If Err.Number <> 0 Then
         Set pDict = CreateObject("scripting.dictionary")
-        pDict.comparemode = vbTextCompare
+        pDict.compareMode = vbTextCompare
     End If
     
     ' pIsDictFilled = True
@@ -106,7 +110,7 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
     
     Dim dict As Object
     Set dict = CreateObject("Scripting.Dictionary")
-    dict.comparemode = vbTextCompare
+    dict.compareMode = vbTextCompare
     
     If IsMissing(targRowBegine) Then
         targRowBegine = 1
@@ -183,7 +187,7 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
    
     Dim tmpDict As Object
     Set tmpDict = CreateObject("scripting.dictionary")
-    tmpDict.comparemode = vbTextCompare
+    tmpDict.compareMode = vbTextCompare
     
     If pStrictMode Then
         If Not IsReg(pStrictModeReg) Then
@@ -247,7 +251,7 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
     
     Dim dict As Object
     Set dict = CreateObject("Scripting.Dictionary")
-    dict.comparemode = vbTextCompare
+    dict.compareMode = vbTextCompare
     
     If IsMissing(targRowBegine) Then
         targRowBegine = 1
@@ -365,7 +369,7 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
    
     Dim tmpDict As Object
     Set tmpDict = CreateObject("scripting.dictionary")
-    tmpDict.comparemode = vbTextCompare
+    tmpDict.compareMode = vbTextCompare
     
     If pStrictMode Then
         If Not IsReg(pStrictModeReg) Then
@@ -426,7 +430,7 @@ Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal t
     
     Dim dict As Object
     Set dict = CreateObject("Scripting.Dictionary")
-    dict.comparemode = vbTextCompare
+    dict.compareMode = vbTextCompare
     
     If IsMissing(targRowBegine) Then
         targRowBegine = 1
@@ -556,7 +560,17 @@ Public Sub unload(ByVal shtName As String, ByVal keyCol As Long, ByVal startingR
 
 End Sub
 
+Public Function exists(ByVal k) As Boolean
+    
+    exists = pDict.exists(Trim(CStr(k)))
+    
+End Function
 
+Public Function item(ByVal k) As Variant
+    
+    item = pDict(Trim(CStr(k)))
+
+End Function
 
 
 ' ________________________________________Class Collection Functions___________________________________________
