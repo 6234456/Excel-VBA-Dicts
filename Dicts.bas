@@ -4,7 +4,8 @@
 '                               add productX
 '                               add loadAddress R1C1Form
 '                               add toJSON
-'                               add Count, exists, item
+'                               add Count, exists, item, Keys
+'                               add property columnRange    for unload the self-filled rangeDict
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -22,9 +23,18 @@ Public Property Get dict() As Object
     Set dict = pDict
 End Property
 
+Public Property Let columnRange(ByVal rng As Integer)
+   pRngCol = rng
+End Property
+
 Public Property Get Count() As Integer
     Count = pDict.Count
 End Property
+
+Public Property Get Keys() As Variant
+    Keys = pDict.Keys
+End Property
+
 
 Public Property Let dict(ByVal dict As Object)
     Set pDict = dict
@@ -200,7 +210,7 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
                 .Global = True
             End With
         
-            For Each k In dict.keys
+            For Each k In dict.Keys
                 If defaultReg.test(k) Then
                     tmpDict(defaultReg.Replace(k, "")) = dict(k)
                 Else
@@ -208,7 +218,7 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
                 End If
             Next k
         Else
-            For Each k In dict.keys
+            For Each k In dict.Keys
                 If pStrictModeReg.test(k) Then
                     tmpDict(pStrictModeReg.Execute(k)(0).submatches(0)) = dict(k)
                 Else
@@ -225,7 +235,7 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
         Set pDict = dict
     Else
         Dim k1 As Variant
-        For Each k1 In dict.keys
+        For Each k1 In dict.Keys
             pDict(k1) = dict(k1)
         Next k1
     End If
@@ -382,7 +392,7 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
                 .Global = True
             End With
         
-            For Each k In dict.keys
+            For Each k In dict.Keys
                 If defaultReg.test(k) Then
                     tmpDict(defaultReg.Replace(k, "")) = dict(k)
                 Else
@@ -390,7 +400,7 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
                 End If
             Next k
         Else
-            For Each k In dict.keys
+            For Each k In dict.Keys
                 If pStrictModeReg.test(k) Then
                     tmpDict(pStrictModeReg.Execute(k)(0).submatches(0)) = dict(k)
                 Else
@@ -407,7 +417,7 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
         Set pDict = dict
     Else
         Dim k1 As Variant
-        For Each k1 In dict.keys
+        For Each k1 In dict.Keys
             pDict(k1) = dict(k1)
         Next k1
     End If
@@ -503,7 +513,7 @@ Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal t
         Set pDict = dict
     Else
         Dim k As Variant
-        For Each k In dict.keys
+        For Each k In dict.Keys
             pDict(k) = dict(k)
         Next k
     End If
@@ -582,7 +592,7 @@ Public Function minus(ByVal dict2 As Dicts) As Dicts
     Set res = New Dicts
     Call res.ini
     
-    For Each k In pDict.keys
+    For Each k In pDict.Keys
         If Not dict2.dict.exists(k) Then
             res.dict(k) = pDict(k)
         End If
@@ -605,7 +615,7 @@ Public Function add(dict2 As Dicts, Optional keepOriginalVal As Boolean) As Dict
     
     res.dict = pDict
     
-    For Each k In dict2.dict.keys
+    For Each k In dict2.dict.Keys
         If Not pDict.exists(k) Then
             res.dict(k) = dict2.dict(k)
         ElseIf Not keepOriginalVal Then
@@ -623,7 +633,7 @@ Public Function update(ByVal dict2 As Dicts) As Dicts
     Set res = New Dicts
     Call res.ini
     
-    For Each k In pDict.keys
+    For Each k In pDict.Keys
         If Not dict2.dict.exists(k) Then
             res.dict(k) = pDict(k)
         ElseIf pDict(k) <> dict2.dict(k) Then
@@ -644,12 +654,12 @@ Public Function reduce(ByVal sign As String) As Variant
     
     If sign = "" Or sign = "+" Then
         res = 0
-        For Each k In pDict.keys
+        For Each k In pDict.Keys
             res = res + pDict(k)
         Next k
     ElseIf sign = "*" Then
         res = 1
-        For Each k In pDict.keys
+        For Each k In pDict.Keys
             res = res * pDict(k)
         Next k
     End If
@@ -665,7 +675,7 @@ Public Function reduceRng(ByVal sign As String) As Dicts
 
     Dim k
 
-    For Each k In pDict.keys
+    For Each k In pDict.Keys
         res.dict(k) = reduceArray(pDict(k), sign)
     Next k
    
@@ -684,7 +694,7 @@ Public Function reduceRngVertical(ByVal sign As String) As Variant
     Dim u As Integer
     Dim l As Integer
 
-    For Each k In pDict.keys
+    For Each k In pDict.Keys
         If tmpCnt = 1 Then
             u = UBound(pDict(k))
             l = LBound(pDict(k))
@@ -750,7 +760,7 @@ Public Function filterExklude(ByVal reg As Object) As Dicts
     Set res = New Dicts
     Call res.ini
     
-    For Each k In pDict.keys
+    For Each k In pDict.Keys
       If Not reg.test(k) Then
         res.dict(k) = pDict(k)
       End If
@@ -768,7 +778,7 @@ Public Function filterInklude(ByVal reg As Object) As Dicts
     Set res = New Dicts
     Call res.ini
     
-    For Each k In pDict.keys
+    For Each k In pDict.Keys
       If reg.test(k) Then
         res.dict(k) = pDict(k)
       End If
@@ -794,7 +804,7 @@ Public Function constDict(Optional ByVal constant As Variant) As Dicts
         constant = 1
     End If
     
-    For Each k In pDict.keys
+    For Each k In pDict.Keys
         res.dict(k) = constant
     Next k
     
@@ -831,7 +841,7 @@ Public Function product(ByVal operand2 As Variant, ByVal operation As String, Op
         ' if the second operand is numeric
         
          
-        For Each k In pDict.keys
+        For Each k In pDict.Keys
             If Not isNum Then
                
                 res.dict(k) = Application.Evaluate(Application.WorksheetFunction.Substitute(pDict(k) & operation & operand2, ",", "."))
@@ -841,7 +851,7 @@ Public Function product(ByVal operand2 As Variant, ByVal operation As String, Op
         Next k
     Else
     
-        For Each k In pDict.keys
+        For Each k In pDict.Keys
             If Not isNum Then
                If operand2.dict.exists(k) Then
                     res.dict(k) = Application.Evaluate(Application.WorksheetFunction.Substitute(pDict(k) & operation & operand2.dict(k), ",", "."))
@@ -873,12 +883,12 @@ Public Function productX(ByVal operation As String, Optional ByVal placeholder A
     Call res.ini
 
             If hasThousandSep Then
-                For Each k In pDict.keys
+                For Each k In pDict.Keys
                     tmp = Replace(pDict(k) & "", ",", ".")
                     res.dict(k) = Application.Evaluate(Replace(operation, placeholder, tmp))
                 Next k
             Else
-                For Each k In pDict.keys
+                For Each k In pDict.Keys
                     res.dict(k) = Application.Evaluate(Replace(operation, placeholder, pDict(k) & ""))
                 Next k
             End If
@@ -904,12 +914,12 @@ Public Function productRng(ByVal operand2 As Variant, ByVal operation As String)
     If IsNumeric(operand2) Then
         ' if the second operand is numeric
 
-        For Each k In pDict.keys
+        For Each k In pDict.Keys
             res.dict(k) = productArr(pDict(k), operation, operand2)
         Next k
     Else
     
-        For Each k In pDict.keys
+        For Each k In pDict.Keys
           
             If operand2.dict.exists(k) Then
                 res.dict(k) = productArr(pDict(k), operation, operand2.dict(k))
@@ -951,17 +961,17 @@ Public Function p()
     Dim is_a As Boolean
     Dim k
     
-    For Each k In Me.dict.keys
+    For Each k In Me.dict.Keys
         is_a = IsArray(Me.dict(k))
         Exit For
     Next k
     
     If is_a Then
-         For Each k In Me.dict.keys
+         For Each k In Me.dict.Keys
             Debug.Print k & "  " & a_toString(Me.dict(k))
         Next k
     Else
-        For Each k In Me.dict.keys
+        For Each k In Me.dict.Keys
             Debug.Print k & "  " & Me.dict(k)
         Next k
     End If
@@ -990,7 +1000,7 @@ End Function
 Public Function pk()
 
     Dim k
-    For Each k In Me.dict.keys
+    For Each k In Me.dict.Keys
         Debug.Print k
     Next k
 
@@ -1003,7 +1013,7 @@ Public Function toJSON(Optional ByVal k As String = "root") As String
     res = res & """children"":[" & Chr(13)
     
     Dim ky
-    For Each ky In pDict.keys
+    For Each ky In pDict.Keys
         res = res & "{""name"":""" & Replace(CStr(ky), """", "") & """, " & """size"": " & Replace(CStr(pDict(ky)), ",", ".") & "}," & Chr(13)
     Next ky
     
