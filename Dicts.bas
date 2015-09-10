@@ -43,7 +43,7 @@ End Property
 Public Property Let strictMode(mode As Boolean)
     On Error GoTo errhandler2
     Dim a As Boolean
-    a = pStrictModeReg.Test("")
+    a = pStrictModeReg.test("")
 
 errhandler2:
     If Err.Number = 0 And Not mode Then
@@ -122,8 +122,8 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
     
     Dim hasReg As Boolean
     hasReg = Not IsMissing(reg)
-    Dim Test As Boolean
-    Test = True
+    Dim test As Boolean
+    test = True
     
     
     Dim myKey As Variant
@@ -162,17 +162,17 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
             If myKey <> "" Then
             
                 If hasReg Then
-                   Test = reg.Test(myKey)
+                   test = reg.test(myKey)
                 End If
                 
 
-                If Test Then
+                If test Then
                      dict(myKey) = myVal
                 End If
                 
             End If
             
-            Test = True
+            test = True
         Next
     Else
         Err.Raise 8888, , "endRow must be bigger than startRow!"
@@ -201,7 +201,7 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
             End With
         
             For Each k In dict.keys
-                If defaultReg.Test(k) Then
+                If defaultReg.test(k) Then
                     tmpDict(defaultReg.Replace(k, "")) = dict(k)
                 Else
                     tmpDict(k) = dict(k)
@@ -209,7 +209,7 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
             Next k
         Else
             For Each k In dict.keys
-                If pStrictModeReg.Test(k) Then
+                If pStrictModeReg.test(k) Then
                     tmpDict(pStrictModeReg.Execute(k)(0).submatches(0)) = dict(k)
                 Else
                     tmpDict(k) = dict(k)
@@ -263,8 +263,8 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
     
     Dim hasReg As Boolean
     hasReg = Not IsMissing(reg)
-    Dim Test As Boolean
-    Test = True
+    Dim test As Boolean
+    test = True
     
     
     Dim hasIgnoreNull As Boolean
@@ -314,14 +314,14 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
             If myKey <> "" Then
             
                 If hasReg Then
-                   Test = reg.Test(myKey)
+                   test = reg.test(myKey)
                 End If
                 
-                If Test And hasIgnoreNull Then
-                    Test = (Trim(CStr(myVal)) <> "" And myVal <> 0)
+                If test And hasIgnoreNull Then
+                    test = (Trim(CStr(myVal)) <> "" And myVal <> 0)
                 End If
                 
-                If Test Then
+                If test Then
                     If hasNullVal And (Trim(CStr(myVal)) = "" Or myVal = 0) Then
                         dict(myKey) = setNullValto
                         Else: dict(myKey) = myVal
@@ -329,7 +329,7 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
                 End If
             End If
             
-            Test = True
+            test = True
         Next
     Else
         myKey = Trim(CStr(Cells(targRowBegine, targKeyCol).Value))
@@ -344,14 +344,14 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
         If myKey <> "" Then
         
             If hasReg Then
-               Test = reg.Test(myKey)
+               test = reg.test(myKey)
             End If
             
-            If Test And hasIgnoreNull Then
-                Test = (Trim(CStr(myVal)) <> "" And myVal <> 0)
+            If test And hasIgnoreNull Then
+                test = (Trim(CStr(myVal)) <> "" And myVal <> 0)
             End If
             
-            If Test Then
+            If test Then
                 If hasNullVal And (Trim(CStr(myVal)) = "" Or myVal = 0) Then
                     dict(myKey) = setNullValto
                     Else: dict(myKey) = myVal
@@ -383,7 +383,7 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
             End With
         
             For Each k In dict.keys
-                If defaultReg.Test(k) Then
+                If defaultReg.test(k) Then
                     tmpDict(defaultReg.Replace(k, "")) = dict(k)
                 Else
                     tmpDict(k) = dict(k)
@@ -391,7 +391,7 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
             Next k
         Else
             For Each k In dict.keys
-                If pStrictModeReg.Test(k) Then
+                If pStrictModeReg.test(k) Then
                     tmpDict(pStrictModeReg.Execute(k)(0).submatches(0)) = dict(k)
                 Else
                     tmpDict(k) = dict(k)
@@ -442,8 +442,8 @@ Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal t
     
     Dim hasReg As Boolean
     hasReg = Not IsMissing(reg)
-    Dim Test As Boolean
-    Test = True
+    Dim test As Boolean
+    test = True
     
     ' the number of cols
     pRngCol = UBound(targValCol) - LBound(targValCol) + 1
@@ -467,15 +467,15 @@ Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal t
             If myKey <> "" Then
             
                 If hasReg Then
-                   Test = reg.Test(myKey)
+                   test = reg.test(myKey)
                 End If
                 
-                If Test Then
+                If test Then
                     dict(myKey) = myVal
                 End If
             End If
             
-            Test = True
+            test = True
         Next
     Else
         myKey = Trim(CStr(Cells(targRowBegine, targKeyCol).Value))
@@ -485,11 +485,11 @@ Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal t
         If myKey <> "" Then
         
             If hasReg Then
-               Test = reg.Test(myKey)
+               test = reg.test(myKey)
             End If
 
             
-            If Test Then
+            If test Then
                 dict(myKey) = myVal
             End If
         
@@ -657,6 +657,91 @@ Public Function reduce(ByVal sign As String) As Variant
     reduce = res
 End Function
 
+' dict(k) -> Array(1,1,1,1,1)  =>  dict(k) -> 5
+Public Function reduceRng(ByVal sign As String) As Dicts
+    Dim res As Dicts
+    Set res = New Dicts
+    Call res.ini
+
+    Dim k
+
+    For Each k In pDict.keys
+        res.dict(k) = reduceArray(pDict(k), sign)
+    Next k
+   
+    
+    Set reduceRng = res
+    
+End Function
+
+Public Function reduceRngVertical(ByVal sign As String) As Variant
+    Dim k
+    Dim i
+    Dim tmpCnt As Integer
+    tmpCnt = 1
+    Dim arr()
+    
+    Dim u As Integer
+    Dim l As Integer
+
+    For Each k In pDict.keys
+        If tmpCnt = 1 Then
+            u = UBound(pDict(k))
+            l = LBound(pDict(k))
+            ReDim arr(l To u)
+            tmpCnt = 2
+            
+            If sign = "+" Then
+                For i = l To u
+                    arr(i) = 0
+                Next i
+            Else
+                For i = l To u
+                    arr(i) = 1
+                Next i
+            End If
+            
+        End If
+        
+        If sign = "+" Then
+            For i = l To u
+                arr(i) = arr(i) + pDict(k)(i)
+            Next i
+        Else
+            For i = l To u
+                arr(i) = arr(i) * pDict(k)(i)
+            Next i
+        End If
+
+    Next k
+   
+    
+    reduceRngVertical = arr
+
+
+End Function
+
+Private Function reduceArray(ByVal arr, ByVal sign As String) As Variant
+    Dim res As Variant
+    Dim k
+    
+    
+    If sign = "" Or sign = "+" Then
+        res = 0
+        For Each k In arr
+            res = res + k
+        Next k
+    ElseIf sign = "*" Then
+        res = 1
+        For Each k In arr
+            res = res * k
+        Next k
+    End If
+    
+    reduceArray = res
+    
+End Function
+
 Public Function filterExklude(ByVal reg As Object) As Dicts
     
     Dim k
@@ -666,7 +751,7 @@ Public Function filterExklude(ByVal reg As Object) As Dicts
     Call res.ini
     
     For Each k In pDict.keys
-      If Not reg.Test(k) Then
+      If Not reg.test(k) Then
         res.dict(k) = pDict(k)
       End If
     Next k
@@ -684,7 +769,7 @@ Public Function filterInklude(ByVal reg As Object) As Dicts
     Call res.ini
     
     For Each k In pDict.keys
-      If reg.Test(k) Then
+      If reg.test(k) Then
         res.dict(k) = pDict(k)
       End If
     Next k
@@ -1020,7 +1105,7 @@ Private Function IsReg(testObj As Object) As Boolean
     On Error GoTo errhandler3
     
     Dim a As Boolean
-    a = testObj.Test("")
+    a = testObj.test("")
     
 errhandler3:
     If Err.Number = 0 Then
