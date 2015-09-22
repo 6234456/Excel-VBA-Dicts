@@ -6,6 +6,7 @@
 '                               add toJSON
 '                               add Count, exists, item, Keys
 '                               add property columnRange    for unload the self-filled rangeDict
+'                               debug loadAddress
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -164,9 +165,9 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
             myKey = Trim(CStr(arr1(i, 1)))
             
             If Not isR1C1 Then
-                myVal = Cells(i, targValCol).Address(0, 0)
+                myVal = Cells(i + targRowBegine - 1, targValCol).Address(0, 0)
             Else
-                myVal = Cells(i, targValCol).Address(ReferenceStyle:=xlR1C1)
+                myVal = Cells(i + targRowBegine - 1, targValCol).Address(ReferenceStyle:=xlR1C1)
             End If
             
             If myKey <> "" Then
@@ -1125,3 +1126,4 @@ errhandler3:
     End If
 
 End Function
+
