@@ -7,6 +7,7 @@
 '                               add Count, exists, item, Keys
 '                               add property columnRange    for unload the self-filled rangeDict
 '                               debug loadAddress
+'                               add keysArr property
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -30,6 +31,22 @@ End Property
 
 Public Property Get Count() As Integer
     Count = pDict.Count
+End Property
+
+Public Property Get keysArr() As Variant
+    Dim res()
+    ReDim res(0 To Me.Count - 1)
+    
+    Dim k
+    Dim cnt As Integer
+    cnt = 0
+    
+    For Each k In Me.Keys
+        res(cnt) = k
+        cnt = cnt + 1
+    Next k
+    
+    keysArr = res
 End Property
 
 Public Property Get Keys() As Variant
@@ -814,6 +831,8 @@ Public Function constDict(Optional ByVal constant As Variant) As Dicts
 End Function
 
 
+
+
 '''''''''''''''''''
 '@param operand2 can be either number or Dicts
 '       operation supports only the string
@@ -1126,4 +1145,3 @@ errhandler3:
     End If
 
 End Function
-
