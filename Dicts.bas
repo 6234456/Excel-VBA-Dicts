@@ -1,13 +1,7 @@
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                          Util Class Dicts
-'@lastUpdate                    09.09.2015
-'                               add productX
-'                               add loadAddress R1C1Form
-'                               add toJSON
-'                               add Count, exists, item, Keys
-'                               add property columnRange    for unload the self-filled rangeDict
-'                               debug loadAddress
-'                               add keysArr property
+'@lastUpdate                    28.09.2015
+'                               reversedMode for loadRng
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -202,6 +196,23 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
             
             test = True
         Next
+    ElseIf targRowBegine = targRowEnd Then
+        myKey = Trim(CStr(Cells(targRowBegine, targKeyCol).Value))
+        myVal = Cells(targRowBegine, targValCol).Address(0, 0)
+        
+        If myKey <> "" Then
+            
+            If hasReg Then
+               test = reg.test(myKey)
+            End If
+            
+
+            If test Then
+                 dict(myKey) = myVal
+            End If
+                
+        End If
+        
     Else
         Err.Raise 8888, , "endRow must be bigger than startRow!"
     End If
@@ -478,17 +489,28 @@ Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal t
     
     Dim myKey As Variant
     Dim myVal As Variant
+    Dim startOrder As Integer
+    Dim endOrder As Integer
+    Dim stepOrder As Integer
     
     If targRowBegine < targRowEnd Then
         Dim arr1()
         Dim arr2()
         arr1 = Range(Cells(targRowBegine, targKeyCol), Cells(targRowEnd, targKeyCol))
-        
-        
         arr2 = rngArr(targRowBegine, targRowEnd, targValCol)
+        
+        If pReversedMode Then
+            startOrder = UBound(arr1)
+            endOrder = LBound(arr1)
+            stepOrder = -1
+        Else
+            endOrder = UBound(arr1)
+            startOrder = LBound(arr1)
+            stepOrder = 1
+        End If
     
     
-        For i = LBound(arr1) To UBound(arr1)
+        For i = startOrder To endOrder Step stepOrder
             myKey = Trim(CStr(arr1(i, 1)))
             myVal = arr2(i, 1)
             
