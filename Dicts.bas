@@ -1,7 +1,8 @@
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                          Util Class Dicts
-'@lastUpdate                    28.09.2015
-'                               reversedMode for loadRng
+'@author                        Qiou Yang
+'@lastUpdate                    26.10.2015
+'                               add dump
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -572,7 +573,7 @@ Public Sub unload(ByVal shtName As String, ByVal keyCol As Long, ByVal startingR
     End If
 
     
-    Worksheets(shtName).Select
+    Worksheets(shtName).Activate
     
     
     If IsMissing(endRow) Or endRow = 0 Then
@@ -607,6 +608,21 @@ Public Sub unload(ByVal shtName As String, ByVal keyCol As Long, ByVal startingR
     
     End If
     Worksheets(tmpname).Activate
+
+End Sub
+
+
+Public Sub dump(ByVal shtName As String, Optional ByVal keyCol As Long = 1, Optional ByVal startingRow As Long = 1, Optional ByVal startingCol As Long, Optional ByVal endCol As Long)
+
+
+    If IsMissing(startingCol) Or startingCol = 0 Then
+        startingCol = keyCol + 1
+    End If
+    
+    'unload the key
+    Worksheets(shtName).Cells(startingRow, keyCol).Resize(Me.Count, 1) = Application.WorksheetFunction.Transpose(Me.keysArr)
+    
+    Call Me.unload(shtName, keyCol, startingRow, startingCol, , endCol)
 
 End Sub
 
