@@ -2,6 +2,7 @@
 __author__ = 'yang'
 
 from copy import deepcopy
+import json
 
 xlUp = -4162
 
@@ -11,28 +12,19 @@ class xlDict:
     def __init__(self, sht=None, keyCol=1, valCol=2, startRow=1, endRow=None, testKey = lambda x: True, ignoreNullVal = True, setNullValTo = None, reversed = False, data = None):
         """
             load the data on the spreadsheet to dict
-
             @param
                     sht             Excel.Worksheet Object
-
                     keyCol          can be a single value           -> the normal Dicts instance
                                     or tuple with two elements      -> (keyColFrom, keyColTo)
                                     or list                         -> [keyLvl1, keyLvl2, ...]
-
                     valCol          can be a single value           -> the normal Dicts instance
                                     or tuple with two elements      -> (keyColFrom, keyColTo)
                                     or list with more than one      -> [keyLvl1, keyLvl2, ...]
-
                     startRow        from which row to start
-
                     endRow          ends at which row
-
                     testKey         a function returning Bool value, to filter the keys based on the result of which
-
                     testVal         a function returning Bool value, to filter the value based on the result of which
-
                     ignoreNullVal   whether to ignore the key if the corresponding value is None, default True
-
                     setNullValTo    set the None value to the given value, valid only when ignoreNullVal is False
         """
 
@@ -183,7 +175,7 @@ class xlDict:
                 for k, v in tmp.iteritems():
                     if isinstance(v, dict):
                         xlDict.__sumDict(v, tmp, k)
-        return tmp
+        return xlDict(data=tmp)
 
     def unload(self, sht, keyCol=1, valCol=2, rowStart=1, rowEnd=None):
         if self.level != 1:
@@ -218,6 +210,17 @@ class xlDict:
             tmp = deepcopy(self.raw)
             xlDict.__simplify(tmp)
             return tmp
+
+    def map(self, keyFun=lambda k: k, valFun=lambda v: v):
+        res = dict()
+        for k, v in self.raw.iteritems():
+            res[keyFun(k)] = valFun(v)
+        self.raw = res
+
+        return self
+
+    def toJSON(self):
+        return json.dumps(self.raw, indent=4, sort_keys=True)
 
 ########################################################
     @staticmethod
@@ -315,7 +318,7 @@ class xlDict:
     def __reduceOneLevel(data):
         for k, v in data.iteritems():
             if not type(v) is dict:
-                data[k] = sum(v)
+                data[k] = sum([i for i in v if i is not None])
             else:
                 xlDict.__reduceOneLevel(v)
 
@@ -347,13 +350,14 @@ if __name__ == "__main__":
     wb = application.Workbooks.Open("{0}{1}{2}".format(os.getcwd(), os.path.sep, "data.xlsx"), ReadOnly=False)
 
     sht = wb.Worksheets("data")
-    sht1 = wb.Worksheets("res")
-    d = xlDict(sht, 4, (5, 6))
+    d = xlDict(sht, [1, 2], (4, 89))
+    d2 = xlDict(sht, [1, 2], 3)
 
-    print(sht1.Range(sht1.Cells(1, 1), sht1.Cells(5, 1)).Value)
-    d.unload(sht1)
-    print(d.simplify())
-    # print(d.reduceToRoot())
+    # print(d.simplify())
+    print(d.reduceToRoot())
+    print(d2.reduceToRoot().map(lambda x: int(x), lambda x: round(x, 2)).toJSON())
+
+
     # print(d.reduced())
-    # d.reduced().unload(sht1)
+    # d.reduceToRoot().unload(sht1)
     wb.Close(SaveChanges=True)
