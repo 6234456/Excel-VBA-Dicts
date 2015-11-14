@@ -1,8 +1,9 @@
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                          Util Class Dicts
 '@author                        Qiou Yang
-'@lastUpdate                    26.10.2015
-'                               add dump
+'@lastUpdate                    17.11.2015
+'                               add loadStruct
+'                               add clone
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -14,6 +15,7 @@ Private pIsDictFilled As Boolean
 Private pStrictMode As Boolean
 Private pStrictModeReg As Object
 Private pReversedMode As Boolean
+Private pLevel As Integer
 
 
 Public Property Get dict() As Object
@@ -78,25 +80,17 @@ errhandler2:
 End Property
 
 
-
 Public Property Let reversedMode(mode As Boolean)
    pReversedMode = mode
-  
 End Property
-
 
 Public Property Let appendMode(mode As Boolean)
-    
     If mode Then
         Call Me.ini
-        pIsDictFilled = True
-    Else
-        pIsDictFilled = False
+        pIsDictFilled = mode
     End If
     
-
 End Property
-
 
 Public Sub ini()
     
@@ -270,6 +264,7 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
         Next k1
     End If
     
+    pLevel = 1
     
     
 End Sub
@@ -452,9 +447,91 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
         Next k1
     End If
     
+    pLevel = 1
     
     
 End Sub
+
+Public Sub loadStruct(ByVal targSht As String, ByVal targKeyCol1 As Integer, ByVal targKeyCol2 As Integer, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant)
+      ' store the name of current sheet
+
+    Dim tmpname As String
+    Dim i As Integer
+    
+    tmpname = ActiveSheet.Name
+    If Trim(targSht) = "" Then
+        targSht = tmpname
+    End If
+    
+    Worksheets(targSht).Activate
+    
+    Dim dict As Object
+    Set dict = CreateObject("Scripting.Dictionary")
+    dict.compareMode = vbTextCompare
+    
+    If IsMissing(targRowBegine) Then
+        targRowBegine = 1
+    End If
+    
+    If IsMissing(targRowEnd) Then
+        targRowEnd = Cells(Rows.Count, targKeyCol2).End(xlUp).Row
+    End If
+    
+    Dim hasReg As Boolean
+    hasReg = Not IsMissing(reg)
+    Dim test As Boolean
+    test = True
+    
+    If IsArray(targValCol) Then
+        ' the number of cols
+        pRngCol = UBound(targValCol) - LBound(targValCol) + 1
+        
+        If pRngCol = 1 Then
+            targValCol = targValCol(LBound(targValCol))
+        End If
+    Else
+        pRngCol = 1
+    End If
+    
+    Dim tmpPreviousRow As Integer
+    Dim tmpCurrentRow As Integer
+    Dim tmpDict As New Dicts
+    
+    tmpPreviousRow = targRowEnd
+    tmpCurrentRow = tmpPreviousRow
+    
+    Do While tmpCurrentRow > targRowBegine
+        tmpCurrentRow = Cells(tmpCurrentRow, targKeyCol1).End(xlUp).Row
+        
+        If pRngCol = 1 Then
+            Call tmpDict.load("", targKeyCol2, targValCol, tmpCurrentRow + 1, tmpPreviousRow, reg, True)
+        Else
+            Call tmpDict.loadRng("", targKeyCol2, targValCol, tmpCurrentRow + 1, tmpPreviousRow, reg)
+        End If
+        
+        Set dict(Trim(CStr(Cells(tmpCurrentRow, targKeyCol1).Value))) = tmpDict
+        
+        Set tmpDict = Nothing
+        
+        tmpPreviousRow = tmpCurrentRow - 1
+    Loop
+    
+    Worksheets(tmpname).Activate
+
+    If Not pIsDictFilled Then
+        Set pDict = dict
+    Else
+        Dim k As Variant
+        For Each k In dict.Keys
+            pDict(k) = dict(k)
+        Next k
+    End If
+    
+    pLevel = 2
+    
+End Sub
+
+
 Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant)
     
   ' store the name of current sheet
@@ -559,6 +636,7 @@ Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal t
         Next k
     End If
     
+    pLevel = 1
 End Sub
 
 
@@ -956,7 +1034,45 @@ Public Function productX(ByVal operation As String, Optional ByVal placeholder A
     
 End Function
 
+Public Function clone() As Dicts
+        Dim res As Dicts
+       Set res = clone__(Me, pLevel)
+       
+       With res
+            .appendMode = pIsDictFilled
+            .reversedMode = pReversedMode
+       
+       
+            If pStrictMode Then
+                 .strictMode = True
+                 .strictModeReg = pStrictModeReg
+            End If
+       
+       End With
+       
+       Set clone = res
 
+End Function
+
+Private Function clone__(ByVal d As Dicts, ByVal l As Integer) As Dicts
+    Dim res As New Dicts
+    Dim k
+    
+    Call res.ini
+    
+    If l > 1 Then
+         For Each k In d.dict.Keys
+            Set res.dict(k) = clone__(d.dict(k), l - 1)
+         Next k
+    Else
+        For Each k In d.dict.Keys
+            res.dict(k) = d.dict(k)
+        Next k
+    End If
+    
+    Set clone__ = res
+
+End Function
 
 
 
