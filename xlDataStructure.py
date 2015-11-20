@@ -1,10 +1,15 @@
 # -*- coding: utf-8 -*-
 __author__ = 'yang'
 
+'''
+    titledDict added
+'''
+
 from copy import deepcopy
 import json
 
 xlUp = -4162
+xltoLeft = -4159
 
 class xlDict:
 
@@ -38,6 +43,7 @@ class xlDict:
                 else:
                     raise TypeError("the type of {0} is invalid!\n Integer, Tuple with two elements or List is required.")
 
+            # level is the total level of keys
             self.level = len(keyCol)
 
             if not type(valCol) is list:
@@ -48,6 +54,7 @@ class xlDict:
                 else:
                     raise TypeError("the type of {0} is invalid!\n Integer, Tuple with two elements or List is required.")
 
+            # deep is the len of valCol
             self.deep = len(valCol)
 
             if not endRow:
@@ -81,8 +88,8 @@ class xlDict:
 
             if self.level == 1:
                 self.raw = xlDict.__singleCol(keys[0], vals, 0, len(vals), testKey, ignoreNullVal, setNullValTo)
-                if self.deep == 1:
-                    xlDict.__reduceOneLevel(self.raw)
+                # if self.deep == 1:
+                #     xlDict.__reduceOneLevel(self.raw)
             else:
                 self.raw = xlDict.__setDict(keys, vals, 0, len(vals), testKey, ignoreNullVal, setNullValTo)
         else:
@@ -222,6 +229,13 @@ class xlDict:
     def toJSON(self):
         return json.dumps(self.raw, indent=4, sort_keys=True)
 
+    def titledDict(self, title):
+        '''
+            @param  title list or tuple which contains the title corresponding to the values in the val list
+                    default for more than one val
+        '''
+        return self.map(valFun=lambda v: dict(zip(title, v)))
+
 ########################################################
     @staticmethod
     def __simplify(data):
@@ -347,16 +361,14 @@ if __name__ == "__main__":
     import win32com.client as win32
     import os
     application = win32.gencache.EnsureDispatch('Excel.Application')
-    wb = application.Workbooks.Open("{0}{1}{2}".format(os.getcwd(), os.path.sep, "data.xlsx"), ReadOnly=False)
+    wb = application.Workbooks.Open("{0}{1}{2}".format(os.getcwd(), os.path.sep, "info.xlsx"), ReadOnly=True)
 
-    sht = wb.Worksheets("data")
-    d = xlDict(sht, [1, 2], (4, 89))
-    d2 = xlDict(sht, [1, 2], 3)
+    sht = wb.Worksheets("Entity")
+    # d = xlDict(sht, [1, 2], (4, 89))
 
     # print(d.simplify())
-    print(d.reduceToRoot())
-    print(d2.reduceToRoot().map(lambda x: int(x), lambda x: round(x, 2)).toJSON())
-
+    # print(d.reduceToRoot())
+    print(sht.Range(sht.Cells(1,1), sht.Cells(1,4)).Value)
 
     # print(d.reduced())
     # d.reduceToRoot().unload(sht1)
