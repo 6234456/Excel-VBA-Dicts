@@ -74,6 +74,20 @@ listhandler:
     isInstance = res
 End Function
 
+Private Function isObj(ByVal obj) As Boolean
+    On Error GoTo listhandler
+    
+    Dim res As Boolean
+    res = False
+    
+    Dim myType As String
+    myType = obj.sign
+    
+listhandler:
+    isObj = (Err.Number = 0)
+
+End Function
+
 Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String = "v") As Lists
     Dim res As New Lists
     res.init
@@ -118,7 +132,11 @@ Public Function toRng(ByRef rng As Range)
         
         Dim i
         For i = 0 To pLen - 1
-            lenArr.add pArr(i).length
+            If isInstance(pArr(i), "Lists") Then
+                lenArr.add pArr(i).length
+            Else
+                lenArr.add 1
+            End If
         Next i
         
         Dim maxLen As Integer
@@ -127,7 +145,11 @@ Public Function toRng(ByRef rng As Range)
         rng.Resize(1, maxLen).Cells.Clear
         
         For i = 0 To pLen - 1
-            rng.Offset(i, 0).Resize(1, pArr(i).length).Value = pArr(i).toArray
+            If isInstance(pArr(i), "Lists") Then
+                rng.Offset(i, 0).Resize(1, pArr(i).length).Value = pArr(i).toArray
+            Else
+                rng.Offset(i, 0).Value = pArr(i)
+            End If
         Next i
     End If
     
@@ -137,7 +159,7 @@ Public Function add(ByVal ele) As Lists
    
     Call check
     
-    If isInstance(ele, "Lists") Then
+    If isObj(ele) Then
         Set pArr(pLen) = ele
     Else
         pArr(pLen) = ele
@@ -287,7 +309,7 @@ Public Function getVal(ByVal index As Integer, Optional ByVal index2) As Variant
     End If
     
     
-    If Not isInstance(pArr(index), "Lists") Then
+    If Not isObj(pArr(index)) Then
         getVal = pArr(index)
     Else
         If IsMissing(index2) Then
@@ -305,7 +327,7 @@ Public Function setVal(ByVal index As Integer, ByVal ele As Variant) As Lists
         Err.Raise 8888, , "ArrayIndexOutOfBoundException"
     End If
     
-    If isInstance(ele, "Lists") Then
+    If isObj(ele) Then
         Set pArr(index) = ele
     Else
         pArr(index) = ele
@@ -663,29 +685,24 @@ End Function
 
 
 Public Function toString()
-    On Error GoTo handler
+
     If pLen = 0 Then
         toString = "[]"
     Else
         Dim res As String
         res = "["
-        
-        Dim tmp As Integer
-        tmp = pArr(0).length
-        
+
         Dim i As Integer
-        
-handler:
-        If Err.Number <> 0 Then
-            For i = 0 To pLen - 1
+
+       
+        For i = 0 To pLen - 1
+            If Not isInstance(pArr(i), "Lists") Then
                 res = res & pArr(i) & ", "
-            Next i
-        Else
-            For i = 0 To pLen - 1
+            Else
                 res = res & pArr(i).toString() & ", "
-            Next i
-        End If
-        
+            End If
+        Next i
+
         toString = left(res, Len(res) - 2) & "]"
     End If
    
