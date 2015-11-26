@@ -4,7 +4,6 @@ Option Explicit
 Private pArr()              ' the underlying array object
 Private pMaxLen As Integer  ' the maximal length of array object
 Private pLen As Integer     ' the length of current List Object
-Private pType As String     ' the type of the class
 
 
 Public Property Get length() As Integer
@@ -12,15 +11,13 @@ Public Property Get length() As Integer
 End Property
 
 Public Property Get sign() As String
-    sign = pType
+    sign = "Lists"
 End Property
-
 
 Public Function init() As Lists
     
     pMaxLen = 20
     pLen = 0
-    pType = "Lists"
     ReDim pArr(0 To pMaxLen - 1)
     
     Set init = Me
