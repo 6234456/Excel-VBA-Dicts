@@ -95,13 +95,13 @@ Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String
     Dim i
     
     If rowNum = 1 Then
-        res.addAll rng.Value
+        res.addAll rng.value
     Else
         Dim tmp As New Lists
         
         For i = 1 To rowNum
             tmp.init
-            tmp.addAll rng.Rows(i).Value
+            tmp.addAll rng.Rows(i).value
             res.add tmp
             Set tmp = Nothing
         Next i
@@ -122,7 +122,7 @@ Public Function toRng(ByRef rng As Range)
     y = pLen
     
     If y = 1 Then
-        rng.Resize(1, pArr(0).length).Value = Me.toArray
+        rng.Resize(1, pArr(0).length).value = Me.toArray
     Else
         Dim lenArr As New Lists
         lenArr.init
@@ -143,9 +143,9 @@ Public Function toRng(ByRef rng As Range)
         
         For i = 0 To pLen - 1
             If isInstance(pArr(i), "Lists") Then
-                rng.Offset(i, 0).Resize(1, pArr(i).length).Value = pArr(i).toArray
+                rng.Offset(i, 0).Resize(1, pArr(i).length).value = pArr(i).toArray
             Else
-                rng.Offset(i, 0).Value = pArr(i)
+                rng.Offset(i, 0).value = pArr(i)
             End If
         Next i
     End If
@@ -652,18 +652,13 @@ Public Function slice(Optional ByVal fromIndex, Optional ByVal toIndex, Optional
 End Function
 
 Public Function toArray() As Variant
-    On Error GoTo handler1
     Dim arr()
     
     If pLen > 0 Then
         ReDim arr(0 To pLen - 1)
         Dim i As Integer
-        
-        Dim tmp As Integer
-        tmp = pArr(0).length
-        
-handler1:
-        If Err.Number <> 0 Then
+     
+        If Not isObj(pArr(i)) Then
             For i = 0 To pLen - 1
                 arr(i) = pArr(i)
             Next i
