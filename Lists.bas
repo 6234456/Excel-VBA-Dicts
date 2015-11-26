@@ -4,16 +4,23 @@ Option Explicit
 Private pArr()              ' the underlying array object
 Private pMaxLen As Integer  ' the maximal length of array object
 Private pLen As Integer     ' the length of current List Object
+Private pType As String     ' the type of the class
 
 
 Public Property Get length() As Integer
     length = pLen
 End Property
 
+Public Property Get sign() As String
+    sign = pType
+End Property
+
+
 Public Function init() As Lists
     
     pMaxLen = 20
     pLen = 0
+    pType = "Lists"
     ReDim pArr(0 To pMaxLen - 1)
     
     Set init = Me
@@ -39,20 +46,62 @@ Public Function isEmpty() As Boolean
 
 End Function
 
-Public Function add(ByVal ele) As Lists
-    On Error GoTo errhandler
+Private Function isInstance(ByVal obj, ByVal sign As String) As Boolean
+    On Error GoTo listhandler
     
+    Dim res As Boolean
+    res = False
+    
+    Dim myType As String
+    myType = obj.sign
+    
+listhandler:
+    If Err.Number = 0 Then
+        res = (myType = sign)
+    End If
+    
+    isInstance = res
+End Function
+
+Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String = "v") As Lists
+    Dim res As New Lists
+    res.init
+    
+    Dim rowNum As Integer
+    rowNum = rng.Rows.Count
+    
+    Dim i
+    
+    If rowNum = 1 Then
+        res.addAll rng.Value
+    Else
+        Dim tmp As New Lists
+        
+        For i = 1 To rowNum
+            tmp.init
+            tmp.addAll rng.Rows(i).Value
+            res.add tmp
+            Set tmp = Nothing
+        Next i
+    End If
+    
+    If orientation = "h" Or orientation = "H" Then
+        Set res = res.zipMe
+    End If
+    
+    Call override(res)
+    Set fromRng = Me
+
+End Function
+
+Public Function add(ByVal ele) As Lists
+   
     Call check
     
-    Dim tmp As Integer
-    tmp = ele.length
-    
-errhandler:
-    
-    If Err.Number <> 0 Then
-        pArr(pLen) = ele
-    Else
+    If isInstance(ele, "Lists") Then
         Set pArr(pLen) = ele
+    Else
+        pArr(pLen) = ele
     End If
     
     pLen = pLen + 1
@@ -102,11 +151,18 @@ Public Function replaceAllAt(ByVal eles, ByVal index As Integer) As Lists
 End Function
 
 Public Function addAll(ByVal arr) As Lists
-    Dim i
     
-    For Each i In arr
-        Me.add i
-    Next i
+    Dim i
+
+    If isInstance(arr, "Lists") Then
+        For Each i In arr.toArray
+            Me.add i
+        Next i
+    Else
+        For Each i In arr
+            Me.add i
+        Next i
+    End If
     
     Set addAll = Me
 End Function
@@ -153,18 +209,46 @@ Public Function zip(ParamArray l() As Variant) As Lists
 
 End Function
 
+' zip the Lists within the Lists
+Public Function zipMe() As Lists
+    If pLen <= 1 Then
+       Set zipMe = Me
+    Else
+        Dim i
+        Dim j
+        Dim res As New Lists
+        res.init
+        
+        Dim lenArr As New Lists
+        lenArr.init
+        
+        For i = 0 To pLen - 1
+            lenArr.add pArr(i).length
+        Next i
+        
+        For j = 0 To lenArr.min - 1
+            Dim tmp As New Lists
+            tmp.init
+            
+            For i = 0 To pLen - 1
+                tmp.add pArr(i).getVal(j)
+            Next i
+            
+            res.add tmp
+            Set tmp = Nothing
+        Next j
+        
+        Set zipMe = res
+    End If
+End Function
+
 Public Function getVal(ByVal index As Integer, Optional ByVal index2) As Variant
     If index >= pLen Or index < 0 Then
         Err.Raise 8888, , "ArrayIndexOutOfBoundException"
     End If
     
-    On Error GoTo handler2
     
-    Dim tmp As Integer
-    tmp = pArr(index).length
-    
-handler2:
-    If Err.Number <> 0 And Err.Number <> 8888 Then
+    If Not isInstance(pArr(index), "Lists") Then
         getVal = pArr(index)
     Else
         If IsMissing(index2) Then
@@ -182,7 +266,12 @@ Public Function setVal(ByVal index As Integer, ByVal ele As Variant) As Lists
         Err.Raise 8888, , "ArrayIndexOutOfBoundException"
     End If
     
-    pArr(index) = ele
+    If isInstance(ele, "Lists") Then
+        Set pArr(index) = ele
+    Else
+        pArr(index) = ele
+    End If
+    
     Set setVal = Me
 End Function
 
@@ -209,6 +298,40 @@ Public Function contains(ByVal ele) As Boolean
     contains = Me.indexOf(ele) > -1
 End Function
 
+
+Public Function min() As Variant
+    Dim res
+    res = pArr(0)
+    
+    Dim i As Integer
+
+    For i = 1 To pLen - 1
+        If pArr(i) < res Then
+            res = pArr(i)
+        End If
+    Next i
+    
+    min = res
+End Function
+
+Public Function max() As Variant
+    Dim res
+    res = pArr(0)
+    
+    Dim i As Integer
+
+    For i = 1 To pLen - 1
+        If pArr(i) > res Then
+            res = pArr(i)
+        End If
+    Next i
+    
+    max = res
+End Function
+
+Public Function avg() As Double
+    avg = Me.reduce("?+_", 0) / pLen
+End Function
 Public Function containsAll(ByVal arr) As Boolean
     Dim res As Boolean
     res = True
@@ -411,7 +534,7 @@ Public Function product(ByVal operation As String, ByRef list2 As Lists, Optiona
     Dim i As Integer
     
     Dim targLen As Integer
-    targLen = Application.WorksheetFunction.Min(pLen, list2.length) - 1
+    targLen = Application.WorksheetFunction.min(pLen, list2.length) - 1
     
     If replaceDecimalPoint Then
         For i = 0 To targLen
@@ -605,4 +728,3 @@ Private Sub QuickSort(vArray As Variant, ByVal inLow As Integer, ByVal inHi As I
   If (tmpLow < inHi) Then QuickSort vArray, tmpLow, inHi
 
 End Sub
-
