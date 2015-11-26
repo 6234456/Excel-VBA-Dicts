@@ -40,22 +40,25 @@ Public Function isEmpty() As Boolean
 End Function
 
 Public Function add(ByVal ele) As Lists
+    On Error GoTo errhandler
     
     Call check
-    pArr(pLen) = ele
+    
+    Dim tmp As Integer
+    tmp = ele.length
+    
+errhandler:
+    
+    If Err.Number <> 0 Then
+        pArr(pLen) = ele
+    Else
+        Set pArr(pLen) = ele
+    End If
+    
     pLen = pLen + 1
-
     Set add = Me
 End Function
 
-Public Function addObj(ByVal ele) As Lists
-    
-    Call check
-    Set pArr(pLen) = ele
-    pLen = pLen + 1
-
-    Set addObj = Me
-End Function
 
 Public Function remove(ByVal ele) As Lists
     If Me.contains(ele) Then
@@ -122,8 +125,6 @@ Public Function zip(ParamArray l() As Variant) As Lists
     
     Dim targLen As Integer  ' the length of res
     targLen = pLen
-    Dim cnt As Integer
-    cnt = 1
     
     Dim tmp
     Dim i
@@ -144,7 +145,7 @@ Public Function zip(ParamArray l() As Variant) As Lists
             tmpList.add tmp.getVal(i)
         Next tmp
         
-        res.addObj tmpList
+        res.add tmpList
         Set tmpList = Nothing
     Next i
     
@@ -175,12 +176,6 @@ handler2:
 
 End Function
 
-Public Function getValObj(ByVal index As Integer) As Variant
-    If index >= pLen Or index < 0 Then
-        Err.Raise 8888, , "ArrayIndexOutOfBoundException"
-    End If
-    Set getValObj = pArr(index)
-End Function
 
 Public Function setVal(ByVal index As Integer, ByVal ele As Variant) As Lists
     If index >= pLen Or index < 0 Then
@@ -233,6 +228,60 @@ Public Function subList(ByVal fromIndex As Integer, ByVal toIndex As Integer) As
     Set subList = Me.slice(fromIndex, toIndex, 1)
 End Function
 
+Public Function every(ByVal judgement As String, Optional ByVal placeholder As String = "_", Optional ByVal replaceDecimalPoint As Boolean = True) As Boolean
+    Dim res As Boolean
+    res = True
+    
+    Dim i
+    
+    If replaceDecimalPoint Then
+        For Each i In Me.toArray
+            If Not Application.Evaluate(Replace(judgement, placeholder, Replace("" & i, ",", "."))) Then
+                res = False
+                Exit For
+            End If
+        Next i
+    Else
+        For Each i In Me.toArray
+            If Not Application.Evaluate(Replace(judgement, placeholder, "" & i)) Then
+                res = False
+                Exit For
+            End If
+        Next i
+    End If
+    
+    every = res
+
+End Function
+
+Public Function some(ByVal judgement As String, Optional ByVal placeholder As String = "_", Optional ByVal replaceDecimalPoint As Boolean = True) As Boolean
+    Dim res As Boolean
+    res = False
+    
+    Dim i
+    
+    If replaceDecimalPoint Then
+        For Each i In Me.toArray
+            If Application.Evaluate(Replace(judgement, placeholder, Replace("" & i, ",", "."))) Then
+                res = True
+                Exit For
+            End If
+        Next i
+    Else
+        For Each i In Me.toArray
+            If Application.Evaluate(Replace(judgement, placeholder, "" & i)) Then
+                res = True
+                Exit For
+            End If
+        Next i
+    End If
+    
+    some = res
+
+End Function
+
+
+
 ''''''''''''
 '@param     operation:              string to be evaluated, e.g. _*2 will be interpreated as ele * 2
 '           placeholder:            placeholder to be replaced by the value
@@ -256,6 +305,55 @@ Public Function map(ByVal operation As String, Optional ByVal placeholder As Str
     End If
     
     Set map = res
+End Function
+
+Public Function mapList(ByVal operation As String, Optional ByVal replaceDecimalPoint As Boolean = True) As Lists
+    
+    Dim tmpStr As String
+    tmpStr = operation
+    
+    Dim res As New Lists
+    res.init
+    
+    Dim idx As New Lists
+    idx.init
+    
+    Dim i
+    Dim j
+    
+    Dim re As Object
+    Set re = CreateObject("vbscript.regexp")
+    
+    With re
+        .Global = True
+        .Pattern = "#(\d+)(\D|\b)"
+    End With
+    
+    For Each i In re.Execute(operation)
+        idx.add CInt(i.submatches(0))
+    Next i
+    
+    idx.sort
+    
+    If replaceDecimalPoint Then
+        For Each i In Me.toArray
+            For Each j In idx.toArray
+                tmpStr = Replace(tmpStr, "#" & j, Replace("" & i.getVal(j), ",", "."))
+            Next j
+            res.add Application.Evaluate(tmpStr)
+            tmpStr = operation
+        Next i
+    Else
+        For Each i In Me.toArray
+            For Each j In idx.toArray
+                operation = Replace(operation, "#" & j, "" & i.getVal(j))
+            Next j
+            res.add Application.Evaluate(tmpStr)
+            tmpStr = operation
+        Next i
+    End If
+    
+    Set mapList = res
 End Function
 
 ''''''''''''
@@ -305,6 +403,30 @@ Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, O
     
      reduce = res
 End Function
+
+Public Function product(ByVal operation As String, ByRef list2 As Lists, Optional ByVal placeholder As String = "_", Optional ByVal placeholderOther As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True) As Lists
+    Dim res As New Lists
+    res.init
+    
+    Dim i As Integer
+    
+    Dim targLen As Integer
+    targLen = Application.WorksheetFunction.Min(pLen, list2.length) - 1
+    
+    If replaceDecimalPoint Then
+        For i = 0 To targLen
+            res.add Application.Evaluate(Replace(Replace(operation, placeholder, Replace("" & pArr(i), ",", ".")), placeholderOther, Replace("" & list2.getVal(i), ",", ".")))
+        Next i
+    Else
+        For i = 0 To targLen
+            res.add Application.Evaluate(Replace(Replace(operation, placeholder, "" & pArr(i)), placeholderOther, "" & list2.getVal(i)))
+        Next i
+    End If
+    
+     Set product = res
+End Function
+
+
 
 Public Function slice(Optional ByVal fromIndex, Optional ByVal toIndex, Optional ByVal step) As Lists
 
@@ -407,6 +529,28 @@ handler:
    
 End Function
 
+Public Function sort() As Lists
+    Dim res As New Lists
+    res.init
+    
+    Dim arr
+    
+    arr = Me.toArray
+    Call QuickSort(arr, 0, pLen - 1)
+    res.addAll arr
+    
+    Call override(res)
+    
+    Set sort = Me
+
+End Function
+
+Public Function reverse() As Lists
+    
+    Set reverse = Me.slice(, , -1)
+    
+End Function
+
 Public Function p()
     Debug.Print Me.toString
 End Function
@@ -423,4 +567,42 @@ Public Function copy() As Lists
     Set copy = res
     
 End Function
+
+
+Private Sub QuickSort(vArray As Variant, ByVal inLow As Integer, ByVal inHi As Integer)
+
+  Dim pivot   As Variant
+  Dim tmpSwap As Variant
+  Dim tmpLow  As Integer
+  Dim tmpHi   As Integer
+
+  tmpLow = inLow
+  tmpHi = inHi
+
+  pivot = vArray((inLow + inHi) \ 2)
+
+  While (tmpLow <= tmpHi)
+
+     While (vArray(tmpLow) > pivot And tmpLow < inHi)
+        tmpLow = tmpLow + 1
+     Wend
+
+     While (pivot > vArray(tmpHi) And tmpHi > inLow)
+        tmpHi = tmpHi - 1
+     Wend
+
+     If (tmpLow <= tmpHi) Then
+        tmpSwap = vArray(tmpLow)
+        vArray(tmpLow) = vArray(tmpHi)
+        vArray(tmpHi) = tmpSwap
+        tmpLow = tmpLow + 1
+        tmpHi = tmpHi - 1
+     End If
+
+  Wend
+
+  If (inLow < tmpHi) Then QuickSort vArray, inLow, tmpHi
+  If (tmpLow < inHi) Then QuickSort vArray, tmpLow, inHi
+
+End Sub
 
