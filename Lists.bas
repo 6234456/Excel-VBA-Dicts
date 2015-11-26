@@ -693,7 +693,7 @@ Public Function toString()
 
        
         For i = 0 To pLen - 1
-            If Not isInstance(pArr(i), "Lists") Then
+            If Not isObj(pArr(i)) Then
                 res = res & pArr(i) & ", "
             Else
                 res = res & pArr(i).toString() & ", "
