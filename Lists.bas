@@ -46,7 +46,7 @@ Public Function isEmpty() As Boolean
 
 End Function
 
-Private Function isInstance(ByVal obj, ByVal sign As String) As Boolean
+Private Function isInstance(ByVal obj, ByVal sign) As Boolean
     On Error GoTo listhandler
     
     Dim res As Boolean
@@ -57,7 +57,18 @@ Private Function isInstance(ByVal obj, ByVal sign As String) As Boolean
     
 listhandler:
     If Err.Number = 0 Then
-        res = (myType = sign)
+        If Not IsArray(sign) Then
+            res = (myType = sign)
+        Else
+            Dim e
+    
+            For Each e In sign
+                If e = myType Then
+                    res = True
+                    Exit For
+                End If
+            Next e
+        End If
     End If
     
     isInstance = res
@@ -675,7 +686,7 @@ handler:
             Next i
         End If
         
-        toString = Left(res, Len(res) - 2) & "]"
+        toString = left(res, Len(res) - 2) & "]"
     End If
    
 End Function
