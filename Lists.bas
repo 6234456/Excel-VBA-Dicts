@@ -94,6 +94,34 @@ Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String
 
 End Function
 
+Public Function toRng(ByRef rng As Range)
+    
+    Dim y
+    y = pLen
+    
+    If y = 1 Then
+        rng.Resize(1, pArr(0).length).Value = Me.toArray
+    Else
+        Dim lenArr As New Lists
+        lenArr.init
+        
+        Dim i
+        For i = 0 To pLen - 1
+            lenArr.add pArr(i).length
+        Next i
+        
+        Dim maxLen As Integer
+        maxLen = lenArr.max
+        
+        rng.Resize(1, maxLen).Cells.Clear
+        
+        For i = 0 To pLen - 1
+            rng.Offset(i, 0).Resize(1, pArr(i).length).Value = pArr(i).toArray
+        Next i
+    End If
+    
+End Function
+
 Public Function add(ByVal ele) As Lists
    
     Call check
