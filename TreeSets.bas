@@ -1,8 +1,9 @@
 Option Explicit
 
 
-Private pList As Lists              ' the underlying array object
+Private pLen  As Integer
 Private pRoot As Nodes
+Private pCnt As Integer
 
 Public Property Get sign() As String
     sign = "TreeSets"
@@ -12,8 +13,8 @@ Public Property Get root() As Nodes
     Set root = pRoot
 End Property
 
-Public Function toString() As String
-    If pList.length = 0 Then
+Public Function toString(Optional ByVal replaceDecimalPoint As Boolean = True) As String
+    If pLen = 0 Then
         toString = "{}"
     Else
         Dim i
@@ -21,47 +22,218 @@ Public Function toString() As String
         Dim res As String
         res = "{"
         
-        For Each i In Me.toArray
-            res = res & i & ", "
-        Next i
+        If replaceDecimalPoint Then
+            For Each i In Me.toArray
+                res = res & Replace("" & i, ",", ".") & ", "
+            Next i
+        Else
+            For Each i In Me.toArray
+                res = res & i & ", "
+            Next i
+        End If
         
         toString = left(res, Len(res) - 2) & "}"
     End If
     
 End Function
 
+Public Function p()
+    
+    Debug.Print Me.toString
+
+End Function
+
+Public Function clear()
+    pLen = 0
+    pCnt = 0
+    Set pRoot = Nothing
+End Function
+
+Public Function ceiling(ByVal e) As Variant
+    
+    Dim res As New Nodes
+    res.init(Nothing, Nothing, -1, 0).e
+    
+    Call ceiling_(e, pRoot, res)
+    
+    If res.index = -1 Then
+        Set ceiling = Nothing
+    Else
+        ceiling = res.value
+    End If
+
+End Function
+
+Public Function contains(ByVal e) As Boolean
+    
+    Dim res As Boolean
+    res = False
+    
+    If Not isNothing(Me.ceiling(e)) Then
+        res = Me.ceiling(e) = e
+    End If
+    
+    contains = res
+
+End Function
+
+Public Function isEmpty() As Boolean
+    isEmpty = pLen = 0
+End Function
+
+Public Function size() As Integer
+    size = pLen
+End Function
+
+Public Function subSet(ByVal fromElement, ByVal toElement) As TreeSets
+    Dim tree As New TreeSets
+    tree.init
+    
+    tree.addAll toArray_(pRoot).filter("AND(_>=" & Replace("" & fromElement, ",", ".") & ", _<" & Replace("" & toElement, ",", ".") & ")")
+    Set subSet = tree
+End Function
+
+Public Function pollFirst() As Variant
+
+    Dim res
+    res = Me.first()
+    Me.remove res
+    pollFirst = res
+    
+End Function
+
+Public Function pollLast() As Variant
+
+    Dim res
+    res = Me.last()
+    Me.remove res
+    pollLast = res
+    
+End Function
+
+Public Function remove(ByVal e) As Boolean
+    
+    Dim parent As Nodes
+    Set parent = Nothing
+    
+    Dim res As Boolean
+    res = False
+    
+    Dim tmp As Integer
+    
+    Call remove_(e, pRoot, parent, res, tmp)
+    
+    If res Then
+        pLen = pLen - 1
+    End If
+    
+    remove = res
+
+End Function
+
+
+Private Sub remove_(ByVal e, ByRef n As Nodes, ByRef parent As Nodes, ByRef res As Boolean, ByRef tmp As Integer)
+    
+    If e = n.value Then
+        ' appendNode will add one back
+        res = True
+        
+        If Not parent Is Nothing Then
+            If parent.value > n.value Then
+                parent.leftNode = Nothing
+            Else
+                parent.RightNode = Nothing
+            End If
+            
+            If Not n.leftNode Is Nothing Then
+                Call appendNode(n.leftNode, pRoot, tmp)
+            End If
+            
+             If Not n.RightNode Is Nothing Then
+                Call appendNode(n.RightNode, pRoot, tmp)
+             End If
+        Else
+            'root element
+            If n.leftNode Is Nothing Then
+                Set pRoot = n.RightNode
+            ElseIf n.RightNode Is Nothing Then
+                 Set pRoot = n.leftNode
+            Else
+                Call appendNode(n.leftNode, n.RightNode, tmp)
+                Set pRoot = n.RightNode
+            End If
+        End If
+    ElseIf e > n.value Then
+        
+        If Not n.RightNode Is Nothing Then
+            Call remove_(e, n.RightNode, n, res, tmp)
+        End If
+        
+         
+    Else
+        If Not n.leftNode Is Nothing Then
+            Call remove_(e, n.leftNode, n, res, tmp)
+        End If
+    End If
+    
+
+End Sub
+
+Private Sub ceiling_(ByVal e, ByRef n As Nodes, ByRef res As Nodes)
+    If e > n.value Then
+        If Not n.RightNode Is Nothing Then
+            Call ceiling_(e, n.RightNode, res)
+        End If
+    ElseIf e = n.value Then
+        Set res = n
+    Else
+        If Not n.leftNode Is Nothing Then
+            If e > n.leftNode.value Then
+                res = e
+            Else
+                Call ceiling_(e, n.leftNode, res)
+            End If
+        Else
+            Set res = n
+        End If
+    End If
+End Sub
+
 Public Property Get length() As Integer
-    length = pList.length
+    length = pLen
 End Property
 
-Public Property Get list() As Lists
-    Set list = pList
+Public Property Get count() As Integer
+    count = pCnt
 End Property
+
 
 Public Function init()
-    Set pList = New Lists
-    pList.init
+    pLen = 0
+    pCnt = 0
 End Function
 
 Public Function add(ByVal val)
     Dim n As New Nodes
     
-    n.init(Nothing, Nothing, pList.length, val).e
+    n.init(Nothing, Nothing, pCnt, val).e
     
-    If Me.length > 0 Then
+    If pLen > 0 Then
         
-      Call appendNode(n, pRoot)
+      Call appendNode(n, pRoot, pLen)
 
     Else
         Set pRoot = n
+        pLen = 1
+        pCnt = 0
     End If
     
-    pList.add n
     Set n = Nothing
+    pCnt = pCnt + 1
 
 End Function
 
-Private Sub appendNode(ByRef n As Nodes, ByRef root As Nodes)
+Private Sub appendNode(ByRef n As Nodes, ByRef root As Nodes, ByRef l As Integer)
     
     Dim targVal, rootVal
     
@@ -70,15 +242,19 @@ Private Sub appendNode(ByRef n As Nodes, ByRef root As Nodes)
     
     If targVal > rootVal Then
         If Not root.RightNode Is Nothing Then
-            Call appendNode(n, root.RightNode)
+            Call appendNode(n, root.RightNode, l)
         Else
             root.RightNode = n
+            l = l + 1
+           
         End If
     ElseIf targVal < rootVal Then
         If Not root.leftNode Is Nothing Then
-            Call appendNode(n, root.leftNode)
+            Call appendNode(n, root.leftNode, l)
         Else
             root.leftNode = n
+            l = l + 1
+           
         End If
     End If
 
@@ -88,7 +264,7 @@ Public Function addAll(ByVal val)
     Dim arr
     Dim i
     
-    If isInstance(val, Array("Lists", "Sets")) Then
+    If isInstance(val, Array("Lists", "Sets", "TreeSets")) Then
         arr = val.toArray
     Else
         arr = val
@@ -100,7 +276,7 @@ Public Function addAll(ByVal val)
     
 End Function
 
-Public Function min() As Variant
+Public Function first() As Variant
     Dim tmp As New Nodes
     Set tmp = Me.root
     
@@ -108,10 +284,10 @@ Public Function min() As Variant
         Set tmp = tmp.leftNode
     Loop
     
-    min = tmp.value
+    first = tmp.value
 End Function
 
-Public Function max() As Variant
+Public Function last() As Variant
     Dim tmp As New Nodes
     Set tmp = Me.root
     
@@ -119,9 +295,23 @@ Public Function max() As Variant
         Set tmp = tmp.RightNode
     Loop
     
-    max = tmp.value
+    last = tmp.value
 End Function
+Private Function isNothing(ByVal e) As Boolean
+    
+    On Error GoTo handler1
+    Dim res As Boolean
+    
+    res = e Is Nothing
 
+handler1:
+    If Err.Number <> 0 Then
+        isNothing = False
+    Else
+        isNothing = res
+    End If
+
+End Function
 
 Private Function isInstance(ByVal obj, ByVal sign) As Boolean
     On Error GoTo listhandler
@@ -165,4 +355,3 @@ Private Function toArray_(ByRef n As Nodes) As Lists
     
     Set toArray_ = l
 End Function
-
