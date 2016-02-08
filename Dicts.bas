@@ -3,6 +3,7 @@
 '@author                        Qiou Yang
 '@lastUpdate                    08.02.2016
 '                               add filterVal
+'                               add mapKey
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -800,6 +801,23 @@ Public Function reduce(ByVal sign As String) As Variant
     reduce = res
 End Function
 
+Public Function mapKey(ByRef d As Dicts) As Dicts
+    Dim res As Dicts
+    Set res = New Dicts
+    Call res.ini
+
+    Dim k
+
+    For Each k In pDict.Keys
+        If d.exists(k) Then
+            res.dict(d.dict(k)) = pDict.item(k)
+        End If
+    Next k
+
+    Set mapKey = res
+
+End Function
+
 ' dict(k) -> Array(1,1,1,1,1)  =>  dict(k) -> 5
 Public Function reduceRng(ByVal sign As String) As Dicts
     Dim res As Dicts
@@ -1169,11 +1187,11 @@ Public Function p()
     
     If is_a Then
          For Each k In Me.dict.Keys
-            Debug.Print k & "  " & a_toString(Me.dict(k))
+            Debug.Print k & "  " & a_toString(Me.item(k))
         Next k
     Else
         For Each k In Me.dict.Keys
-            Debug.Print k & "  " & Me.dict(k)
+            Debug.Print k & "  " & Me.item(k)
         Next k
     End If
     
