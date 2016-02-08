@@ -1,9 +1,8 @@
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                          Util Class Dicts
 '@author                        Qiou Yang
-'@lastUpdate                    17.11.2015
-'                               add loadStruct
-'                               add clone
+'@lastUpdate                    08.02.2016
+'                               add filterVal
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -883,6 +882,34 @@ Private Function reduceArray(ByVal arr, ByVal sign As String) As Variant
     End If
     
     reduceArray = res
+    
+End Function
+
+Public Function filterVal(ByVal operation As String, Optional ByVal placeholder As String = "{*}", Optional ByVal hasThousandSep As Boolean = True) As Dicts
+    Dim k
+    Dim tmp As String
+    
+    Dim res As Dicts
+    Set res = New Dicts
+    Call res.ini
+
+    If hasThousandSep Then
+        For Each k In pDict.Keys
+            tmp = Replace(pDict(k) & "", ",", ".")
+            
+            If Application.Evaluate(Replace(operation, placeholder, tmp)) Then
+                res.dict(k) = k
+            End If
+        Next k
+    Else
+        For Each k In pDict.Keys
+            If Application.Evaluate(Replace(operation, placeholder, pDict(k) & "")) Then
+                res.dict(k) = k
+            End If
+        Next k
+    End If
+
+    Set filterVal = res
     
 End Function
 
