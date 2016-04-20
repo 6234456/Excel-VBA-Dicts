@@ -3,10 +3,15 @@ __author__ = 'yang'
 
 '''
     titledDict added
+    dump added
+    adjusted to Python3
 '''
 
 from copy import deepcopy
 import json
+
+import win32com.client as win32
+import os
 
 xlUp = -4162
 xltoLeft = -4159
@@ -38,7 +43,7 @@ class xlDict:
             if not type(keyCol) is list:
                 if type(keyCol) is tuple:
                     keyCol = range(keyCol[0], keyCol[1]+1)
-                elif isinstance(keyCol, (int, long)):
+                elif isinstance(keyCol, (int)):
                     keyCol = [keyCol]
                 else:
                     raise TypeError("the type of {0} is invalid!\n Integer, Tuple with two elements or List is required.")
@@ -49,7 +54,7 @@ class xlDict:
             if not type(valCol) is list:
                 if type(valCol) is tuple:
                     valCol = range(valCol[0], valCol[1]+1)
-                elif isinstance(valCol, (int, long)):
+                elif isinstance(valCol, (int)):
                     valCol = [valCol]
                 else:
                     raise TypeError("the type of {0} is invalid!\n Integer, Tuple with two elements or List is required.")
@@ -193,18 +198,51 @@ class xlDict:
 
             # load keys
             keyVal = sht.Range(sht.Cells(rowStart, keyCol), sht.Cells(rowEnd, keyCol)).Value
+            if keyVal is None:
+                raise AttributeError("The Key Column is empty!")
+
             keyVal = sum(keyVal, ())
 
             if self.deep > 1:
                 val = tuple([self.raw.get(i, (None,)*self.deep) for i in keyVal][:len(keyVal)])
             elif self.deep == 1:
-                val = tuple([(self.raw.get(i, None),) for i in keyVal])
-
+                #val = tuple([(self.raw.get(i, None),) for i in keyVal])
+                val = list()
+                for i in keyVal:
+                    tmp = self.raw.get(i, None)
+                    if tmp is not None:
+                        tmp = tmp[0]
+                    val.append((tmp,))
+                val = tuple(val)
 
             sht.Range(sht.Cells(rowStart, valCol), sht.Cells(rowEnd, valCol + self.deep -1)).Value = val
 
             return self
 
+
+    def dump(self, sht, startRow=1, startCol=1, titled=False):
+        # dump the keys
+        cnt, karr = 1, list()
+
+        if titled:
+            startRow = startRow + 1
+
+        startRow_ = startRow
+
+        for k in self.raw.keys():
+            sht.Cells(startRow, startCol).Value = k
+            if titled and cnt == 1:
+                for i in self.raw[k]:
+                    karr.append(i.keys()[0])
+                cnt = 0
+            startRow += 1
+
+
+        self.unload(sht, startCol, startCol+1, startRow_)
+
+
+        if titled:
+            sht.Range(sht.Cells(startRow, startCol+1), sht.Cells(startRow, startCol + len(karr))).Value = tuple(karr)
 
     def append(self, sht=None, keyCol=1, valCol=2, startRow=1, endRow=None, testKey = lambda x: True, ignoreNullVal = True, setNullValTo = None, reversed = False, data = None):
         other = xlDict(sht,keyCol,valCol,startRow,endRow,testKey,ignoreNullVal,setNullValTo,reversed,data)
@@ -220,7 +258,7 @@ class xlDict:
 
     def map(self, keyFun=lambda k: k, valFun=lambda v: v):
         res = dict()
-        for k, v in self.raw.iteritems():
+        for k, v in self.raw.items():
             res[keyFun(k)] = valFun(v)
         self.raw = res
 
@@ -357,9 +395,13 @@ class xlDict:
         xlDict.__sumDict(data)
         return data
 
+    @staticmethod
+    def getWorkBook(wbName, readOnly=True):
+        application = win32.gencache.EnsureDispatch('Excel.Application')
+        return application.Workbooks.Open("{0}{1}{2}".format(os.getcwd(), os.path.sep, wbName), ReadOnly=readOnly)
+
+
 if __name__ == "__main__":
-    import win32com.client as win32
-    import os
     application = win32.gencache.EnsureDispatch('Excel.Application')
     wb = application.Workbooks.Open("{0}{1}{2}".format(os.getcwd(), os.path.sep, "info.xlsx"), ReadOnly=True)
 
@@ -368,7 +410,7 @@ if __name__ == "__main__":
 
     # print(d.simplify())
     # print(d.reduceToRoot())
-    print(sht.Range(sht.Cells(1,1), sht.Cells(1,4)).Value)
+    # print(sht.Range(sht.Cells(1,1), sht.Cells(1,4)).Value)
 
     # print(d.reduced())
     # d.reduceToRoot().unload(sht1)
