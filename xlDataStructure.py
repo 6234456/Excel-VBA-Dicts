@@ -3,8 +3,6 @@ __author__ = 'yang'
 
 '''
     titledDict added
-    dump added
-    adjusted to Python3
 '''
 
 from copy import deepcopy
@@ -18,6 +16,7 @@ xltoLeft = -4159
 
 class xlDict:
 
+    excel = win32.gencache.EnsureDispatch('Excel.Application')
 
     def __init__(self, sht=None, keyCol=1, valCol=2, startRow=1, endRow=None, testKey = lambda x: True, ignoreNullVal = True, setNullValTo = None, reversed = False, data = None):
         """
@@ -210,7 +209,7 @@ class xlDict:
                 val = list()
                 for i in keyVal:
                     tmp = self.raw.get(i, None)
-                    if tmp is not None:
+                    if tmp is not None and isinstance(tmp, (list, tuple)):
                         tmp = tmp[0]
                     val.append((tmp,))
                 val = tuple(val)
@@ -218,6 +217,11 @@ class xlDict:
             sht.Range(sht.Cells(rowStart, valCol), sht.Cells(rowEnd, valCol + self.deep -1)).Value = val
 
             return self
+
+    def dumpKeys(self, sht, startRow=1, startCol=1):
+        for k in self.raw.keys():
+            sht.Cells(startRow, startCol).Value = k
+            startRow += 1
 
 
     def dump(self, sht, startRow=1, startCol=1, titled=False):
@@ -230,11 +234,12 @@ class xlDict:
         startRow_ = startRow
 
         for k in self.raw.keys():
-            sht.Cells(startRow, startCol).Value = k
             if titled and cnt == 1:
                 for i in self.raw[k]:
                     karr.append(i.keys()[0])
                 cnt = 0
+
+            sht.Cells(startRow, startCol).Value = k
             startRow += 1
 
 
@@ -292,7 +297,7 @@ class xlDict:
         '''
             the data dict has to be square
         '''
-        for k, v in data.iteritems():
+        for k, v in data.items():
             if not type(v) is dict:
                 if isinstance(v, (str, int, float)):
                     return (l + 1, 1)
@@ -397,8 +402,15 @@ class xlDict:
 
     @staticmethod
     def getWorkBook(wbName, readOnly=True):
-        application = win32.gencache.EnsureDispatch('Excel.Application')
-        return application.Workbooks.Open("{0}{1}{2}".format(os.getcwd(), os.path.sep, wbName), ReadOnly=readOnly)
+        return xlDict.excel.Workbooks.Open("{0}{1}{2}".format(os.getcwd(), os.path.sep, wbName), ReadOnly=readOnly)
+
+    @staticmethod
+    def createWorkBook(wbName):
+        wb = xlDict.excel.Workbooks.Add()
+        wb.SaveAs("{0}{1}{2}".format(os.getcwd(), os.path.sep, wbName))
+        wb.Close(SaveChanges=False)
+        return xlDict.excel.Workbooks.Open("{0}{1}{2}".format(os.getcwd(), os.path.sep, wbName), ReadOnly=False)
+
 
 
 if __name__ == "__main__":
