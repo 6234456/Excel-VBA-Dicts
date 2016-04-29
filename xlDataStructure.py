@@ -70,25 +70,42 @@ class xlDict:
             if not reversed:
                 # load keys
                 for i in keyCol:
-                    keys.append(list(sht.Range(sht.Cells(startRow, i), sht.Cells(endRow, i)).Value))
+                    if startRow == endRow:
+                        keys.append([sht.Range(sht.Cells(startRow, i), sht.Cells(endRow, i)).Value])
+                    else:
+                        keys.append(list(sht.Range(sht.Cells(startRow, i), sht.Cells(endRow, i)).Value))
 
                 #load values
                 for i in valCol:
-                    vals.append(list(sht.Range(sht.Cells(startRow, i), sht.Cells(endRow, i)).Value))
+                    if startRow == endRow:
+                        vals.append([sht.Range(sht.Cells(startRow, i), sht.Cells(endRow, i)).Value])
+                    else:
+                        vals.append(list(sht.Range(sht.Cells(startRow, i), sht.Cells(endRow, i)).Value))
             else:
                 # load keys
                 for i in keyCol:
-                    tmp = list(sht.Range(sht.Cells(startRow, i), sht.Cells(endRow, i)).Value)
+                    if startRow == endRow:
+                        tmp = [sht.Range(sht.Cells(startRow, i), sht.Cells(endRow, i)).Value]
+                    else:
+                        tmp = list(sht.Range(sht.Cells(startRow, i), sht.Cells(endRow, i)).Value)
+
                     tmp.reverse()
                     keys.append(tmp)
 
                 #load values
                 for i in valCol:
-                    tmp = list(sht.Range(sht.Cells(startRow, i), sht.Cells(endRow, i)).Value)
+                    if startRow == endRow:
+                        tmp = [sht.Range(sht.Cells(startRow, i), sht.Cells(endRow, i)).Value]
+                    else:
+                        tmp = list(sht.Range(sht.Cells(startRow, i), sht.Cells(endRow, i)).Value)
+
                     tmp.reverse()
                     vals.append(tmp)
 
-            vals, keys = [list(sum(i, ())) for i in zip(*vals)], [list(sum(j, ())) for j in keys]
+            if startRow == endRow:
+                vals, keys = [list(i) for i in zip(*vals)], list(keys)
+            else:
+                vals, keys = [list(sum(i, ())) for i in zip(*vals)], [list(sum(j, ())) for j in keys]
 
             if self.level == 1:
                 self.raw = xlDict.__singleCol(keys[0], vals, 0, len(vals), testKey, ignoreNullVal, setNullValTo)
