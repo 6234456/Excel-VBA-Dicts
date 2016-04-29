@@ -143,7 +143,7 @@ class xlDict:
         else:
             raise TypeError("dict or xlDict expected!")
 
-        for k, v in self.raw.iteritems():
+        for k, v in self.raw.items():
             if k in tmp:
                 res[k] = v
 
@@ -158,7 +158,7 @@ class xlDict:
         else:
             raise TypeError("dict or xlDict expected!")
 
-        for k, v in tmp.iteritems():
+        for k, v in tmp.items():
             if k not in self.raw:
                 res[k] = v
         return xlDict(data=res)
@@ -172,7 +172,7 @@ class xlDict:
         else:
             raise TypeError("dict or xlDict expected!")
 
-        for k, v in self.raw.iteritems():
+        for k, v in self.raw.items():
             if k not in tmp:
                 res[k] = v
         return xlDict(data=res)
@@ -200,7 +200,7 @@ class xlDict:
         if self.level > 1:
             xlDict.__reduceOneLevel(tmp)
             for i in range(self.level):
-                for k, v in tmp.iteritems():
+                for k, v in tmp.items():
                     if isinstance(v, dict):
                         xlDict.__sumDict(v, tmp, k)
         return xlDict(data=tmp)
@@ -302,7 +302,7 @@ class xlDict:
         '''
             to simplify data[x][x][x][z] = y to data[x][z] = y
         '''
-        for k, v in data.iteritems():
+        for k, v in data.items():
             if type(v) is dict:
                 xlDict.__simplify(v)
                 if (k in v) and len(v) == 1:
@@ -390,7 +390,7 @@ class xlDict:
 
     @staticmethod
     def __reduceOneLevel(data):
-        for k, v in data.iteritems():
+        for k, v in data.items():
             if not type(v) is dict:
                 data[k] = sum([i for i in v if i is not None])
             else:
@@ -403,7 +403,7 @@ class xlDict:
             upper   the dict which contains data
             tar     the index of data
         '''
-        for k, v in data.iteritems():
+        for k, v in data.items():
             if not type(v) is dict:
                 upper[tar] = sum(data.values())
                 break
