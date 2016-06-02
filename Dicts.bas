@@ -1035,41 +1035,26 @@ End Function
 '       operation supports only the string
 '''''''''''''''''''
 
-Public Function product(ByVal operand2 As Variant, ByVal operation As String, Optional ByVal IsNumericOperation As Boolean) As Dicts
+Public Function product(ByVal operand2 As Variant, ByVal operation As String, Optional ByVal IsNumericOperation As Boolean = True) As Dicts
     Dim k
-    Dim isNum As Boolean
-    isNum = True
-    
+   
     Dim res As Dicts
     Set res = New Dicts
     Call res.ini
-    
-    If Not IsMissing(IsNumericOperation) Then
-        If Not IsNumericOperation Then
-            isNum = False
-        End If
-    Else
-        isNum = True
-    End If
 
-   
     
     If IsNumeric(operand2) Then
         ' if the second operand is numeric
-        
-         
-        For Each k In pDict.Keys
-            If Not isNum Then
-               
+        For Each k In Me.dict.Keys
+            If IsNumericOperation Then
                 res.dict(k) = Application.Evaluate(Application.WorksheetFunction.Substitute(pDict(k) & operation & operand2, ",", "."))
             Else
                 res.dict(k) = Application.Evaluate(pDict(k) & operation & operand2)
             End If
         Next k
     Else
-    
-        For Each k In pDict.Keys
-            If Not isNum Then
+        For Each k In Me.dict.Keys
+            If IsNumericOperation Then
                If operand2.dict.exists(k) Then
                     res.dict(k) = Application.Evaluate(Application.WorksheetFunction.Substitute(pDict(k) & operation & operand2.dict(k), ",", "."))
                End If
