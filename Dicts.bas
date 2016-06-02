@@ -1,9 +1,10 @@
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                          Util Class Dicts
 '@author                        Qiou Yang
-'@lastUpdate                    08.02.2016
-'                               add filterVal
-'                               add mapKey
+'@lastUpdate                    02.06.2016
+'                               bugfix filterVal
+'                               add frequencyCount
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -118,7 +119,7 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
     Dim tmpname As String
     Dim i As Integer
     
-    tmpname = ActiveSheet.Name
+    tmpname = ActiveSheet.name
     If Trim(targSht) = "" Then
         targSht = tmpname
     End If
@@ -277,7 +278,7 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
     Dim tmpname As String
     Dim i As Integer
     
-    tmpname = ActiveSheet.Name
+    tmpname = ActiveSheet.name
     If Trim(targSht) = "" Then
         targSht = tmpname
     End If
@@ -458,7 +459,7 @@ Public Sub loadStruct(ByVal targSht As String, ByVal targKeyCol1 As Integer, ByV
     Dim tmpname As String
     Dim i As Integer
     
-    tmpname = ActiveSheet.Name
+    tmpname = ActiveSheet.name
     If Trim(targSht) = "" Then
         targSht = tmpname
     End If
@@ -538,7 +539,7 @@ Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal t
     Dim tmpname As String
     Dim i As Integer
     
-    tmpname = ActiveSheet.Name
+    tmpname = ActiveSheet.name
     If Trim(targSht) = "" Then
         targSht = tmpname
     End If
@@ -639,12 +640,47 @@ Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal t
     pLevel = 1
 End Sub
 
+' rng can be Range Object or an array
+Public Function frequencyCount(ByRef rng) As Dicts
+
+    Dim res As New Dicts
+    Call res.ini
+    
+    Dim k
+    
+
+    If Not IsArray(rng) Then
+        For Each k In rng.Cells
+            If Len(Trim(CStr(k.Value))) > 0 Then
+                If res.exists(k.Value) Then
+                    res.dict(CStr(k.Value)) = res.dict(CStr(k.Value)) + 1
+                Else
+                    res.dict(CStr(k.Value)) = 1
+                End If
+            End If
+        Next k
+    Else
+         For Each k In rng
+            If Len(Trim(CStr(k))) > 0 Then
+                If res.exists(k) Then
+                    res.dict(CStr(k)) = res.dict(CStr(k)) + 1
+                Else
+                    res.dict(CStr(k)) = 1
+                End If
+            End If
+        Next k
+    End If
+
+    Set frequencyCount = res
+
+End Function
+
 
 
 Public Sub unload(ByVal shtName As String, ByVal keyCol As Long, ByVal startingRow As Long, ByVal startingCol As Long, Optional ByVal endRow As Long, Optional ByVal endCol As Long)
 
     Dim tmpname As String
-    tmpname = ActiveSheet.Name
+    tmpname = ActiveSheet.name
     
     If Trim(shtName) = "" Then
         shtName = tmpname
@@ -916,13 +952,13 @@ Public Function filterVal(ByVal operation As String, Optional ByVal placeholder 
             tmp = Replace(pDict(k) & "", ",", ".")
             
             If Application.Evaluate(Replace(operation, placeholder, tmp)) Then
-                res.dict(k) = k
+                res.dict(k) = pDict(k)
             End If
         Next k
     Else
         For Each k In pDict.Keys
             If Application.Evaluate(Replace(operation, placeholder, pDict(k) & "")) Then
-                res.dict(k) = k
+                res.dict(k) = pDict(k)
             End If
         Next k
     End If
@@ -1342,5 +1378,25 @@ errhandler3:
     Else
         IsReg = False
     End If
+
+End Function
+
+Public Function getTargetColumn(ByVal targSht As String, ByVal targCol As Integer, Optional ByVal targRowBegine, Optional ByVal targRowEnd) As Range
+    Dim tmpname As String
+    
+    tmpname = ActiveSheet.name
+    If Trim(targSht) = "" Then
+        targSht = tmpname
+    End If
+
+    If IsMissing(targRowBegine) Then
+        targRowBegine = 1
+    End If
+    
+    If IsMissing(targRowEnd) Then
+        targRowEnd = Worksheets(targSht).Cells(Rows.Count, targCol).End(xlUp).Row
+    End If
+    
+    Set getTargetColumn = Worksheets(targSht).Cells(targRowBegine, targCol).Resize(targRowEnd - targRowBegine + 1, 1)
 
 End Function
