@@ -1,3 +1,14 @@
+## Introduction
+
+**_Functional Programming in VBA_**
+```
+
+     Dim dict As New Dicts
+     dict.map("_*2").filterKey("_>4")
+
+```
+
+
 ## Basic Usage
 _**Example :**_ 
 * to load all the invoices with invoice number starting with 4 alphabetical letters on the spreadsheet "src"
