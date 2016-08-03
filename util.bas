@@ -1,3 +1,71 @@
+' loop through the file system
+' define the interface of
+' sub interface_processWorkbook(byref wb as workbook, byref this as workbook)
+
+Public Sub processWorkbooksInthePath(Optional ByVal path As String = "src", Optional ByVal readOnly As Boolean = True)
+    
+    On Error GoTo handler
+
+    Application.ScreenUpdating = False
+    
+    Dim fso As Object
+    Set fso = CreateObject("scripting.filesystemobject")
+    
+    
+    Dim targPath As String
+    targPath = Trim(ActiveWorkbook.path & "\" & path)
+    
+    If Right(targPath, 1) = "\" Then
+        targPath = Left(targPath, Len(targPath) - 1)
+    End If
+    
+    
+    Dim re As Object
+    Set re = CreateObject("vbscript.regexp")
+    
+    Dim this As Workbook
+    Set this = ThisWorkbook
+    
+    Dim that As Workbook
+    
+    With re
+        .Pattern = "\.xls(m|x)?$"
+    End With
+    
+    
+    Dim i As Object
+    Dim p As Object
+    Dim fName As String
+    
+    Set p = fso.getfolder(targPath)
+    
+    For Each i In p.Files
+        fName = i.name
+        If Left(fName, 1) <> "~" And re.test(fName) And fName <> this.name Then
+            Application.Workbooks.Open fName, 0, readOnly
+            
+            Set that = ActiveWorkbook
+            
+            Call interface_processWorkbook(that, this)
+
+            that.Close Not readOnly
+        End If
+    Next i
+    
+handler:
+    Application.ScreenUpdating = True
+    
+    If Err.Number <> 0 Then
+        MsgBox "error"
+    End If
+
+End Sub
+
+
+Sub interface_processWorkbook(ByRef wb As Workbook, ByRef this As Workbook)
+    Debug.Print wb.Worksheets(1).name
+End Sub
+
 ' one row or one column
 ' mergeCells with the same content
 Private Sub mergeCells(ByRef rng As Range, Optional ByVal orient As String = "v")
