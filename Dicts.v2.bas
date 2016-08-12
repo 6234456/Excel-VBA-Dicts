@@ -1,8 +1,9 @@
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+ '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                          Util Class Dicts
 '@author                        Qiou Yang
-'@lastUpdate                    05.08.2016
-'                               add reduceRngX
+'@lastUpdate                    12.08.2016
+'                               add getNamedVal
+'                               (only applicable to the numeric items due to the reduce function)
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -15,11 +16,53 @@ Private pStrictMode As Boolean
 Private pStrictModeReg As Object
 Private pReversedMode As Boolean
 Private pLevel As Integer
+Private pIsNamed As Boolean
+Private pNamedArray As Dicts
 
 
 Public Property Get dict() As Object
     Set dict = pDict
 End Property
+
+Public Property Get named() As Dicts
+    If pIsNamed Then
+        Set named = pNamedArray
+    Else
+        Set named = Nothing
+    End If
+End Property
+
+Public Function setNamed(ByVal rng As Variant) As Dicts
+   On Error GoTo namedArrayHdl
+   
+   Dim s As String
+   Dim c
+   Dim cnt As Integer
+   
+   cnt = 0
+   
+   Dim d As New Dicts
+   Call d.ini
+   
+   s = rng.Address
+   
+namedArrayHdl:
+
+    If Err.Number = 0 Then
+        For Each c In rng.Cells
+            d.dict(Trim(CStr(c.Value))) = cnt
+            cnt = cnt + 1
+        Next c
+        
+        Me.setNamed d
+    Else
+        Set pNamedArray = rng
+    End If
+    
+   pIsNamed = True
+   
+   Set setNamed = Me
+End Function
 
 Public Property Let columnRange(ByVal rng As Integer)
    pRngCol = rng
@@ -117,7 +160,7 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
     Dim tmpname As String
     Dim i As Integer
     
-    tmpname = ActiveSheet.Name
+    tmpname = ActiveSheet.name
     If Trim(targSht) = "" Then
         targSht = tmpname
     End If
@@ -180,7 +223,7 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
                 If hasReg Then
                    test = reg.test(myKey)
                 End If
-                
+               
 
                 If test Then
                      dict(myKey) = myVal
@@ -199,7 +242,7 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
             If hasReg Then
                test = reg.test(myKey)
             End If
-            
+           
 
             If test Then
                  dict(myKey) = myVal
@@ -276,7 +319,7 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
     Dim tmpname As String
     Dim i As Integer
     
-    tmpname = ActiveSheet.Name
+    tmpname = ActiveSheet.name
     If Trim(targSht) = "" Then
         targSht = tmpname
     End If
@@ -457,7 +500,7 @@ Public Sub loadStruct(ByVal targSht As String, ByVal targKeyCol1 As Integer, ByV
     Dim tmpname As String
     Dim i As Integer
     
-    tmpname = ActiveSheet.Name
+    tmpname = ActiveSheet.name
     If Trim(targSht) = "" Then
         targSht = tmpname
     End If
@@ -537,7 +580,7 @@ Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal t
     Dim tmpname As String
     Dim i As Integer
     
-    tmpname = ActiveSheet.Name
+    tmpname = ActiveSheet.name
     If Trim(targSht) = "" Then
         targSht = tmpname
     End If
@@ -645,7 +688,7 @@ Public Function frequencyCount(ByRef rng) As Dicts
     Call res.ini
     
     Dim k
-    
+   
 
     If Not IsArray(rng) Then
         For Each k In rng.Cells
@@ -678,7 +721,7 @@ End Function
 Public Sub unload(ByVal shtName As String, ByVal keyCol As Long, ByVal startingRow As Long, ByVal startingCol As Long, Optional ByVal endRow As Long, Optional ByVal endCol As Long)
 
     Dim tmpname As String
-    tmpname = ActiveSheet.Name
+    tmpname = ActiveSheet.name
     
     If Trim(shtName) = "" Then
         shtName = tmpname
@@ -747,6 +790,21 @@ End Function
 Public Function item(ByVal k) As Variant
     
     item = pDict(Trim(CStr(k)))
+
+End Function
+
+Public Function getNamedVal(ByVal nm As String) As Dicts
+        
+    If pIsNamed Then
+        Dim i As Integer
+        i = pNamedArray.item(nm)
+        
+        Set getNamedVal = Me.reduceRngX("if({i}=" & i & ",{v}+{*},{v})")
+        
+    Else
+        Set getNamedVal = Nothing
+    End If
+   
 
 End Function
 
@@ -974,7 +1032,7 @@ Public Function reduceArrayX(ByVal arr, ByVal operation As String, Optional ByVa
     End If
 
     reduceArrayX = initVal
-    
+   
 
 End Function
 
@@ -1256,7 +1314,7 @@ Public Function p()
         Next k
     End If
     
-    
+   
 
 End Function
 
@@ -1409,7 +1467,7 @@ End Function
 Public Function getTargetColumn(ByVal targSht As String, ByVal targCol As Integer, Optional ByVal targRowBegine, Optional ByVal targRowEnd) As Range
     Dim tmpname As String
     
-    tmpname = ActiveSheet.Name
+    tmpname = ActiveSheet.name
     If Trim(targSht) = "" Then
         targSht = tmpname
     End If
@@ -1425,4 +1483,3 @@ Public Function getTargetColumn(ByVal targSht As String, ByVal targCol As Intege
     Set getTargetColumn = Worksheets(targSht).Cells(targRowBegine, targCol).Resize(targRowEnd - targRowBegine + 1, 1)
 
 End Function
-
