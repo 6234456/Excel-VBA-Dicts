@@ -5,7 +5,7 @@
 '@lastUpdate                    06.11.2016
 '                               add x
 '                               add y
-'                               load/loadAddress function internal implementation modified  / will not change worksheet
+'                               load/loadAddress/loadStruct function internal implementation modified  / will not change worksheet
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -517,60 +517,60 @@ Public Sub loadStruct(ByVal targSht As String, ByVal targKeyCol1 As Integer, ByV
         targSht = tmpname
     End If
     
-    Worksheets(targSht).Activate
+    With Worksheets(targSht)
     
-    Dim dict As Object
-    Set dict = CreateObject("Scripting.Dictionary")
-    dict.compareMode = vbTextCompare
-    
-    If IsMissing(targRowBegine) Then
-        targRowBegine = 1
-    End If
-    
-    If IsMissing(targRowEnd) Then
-        targRowEnd = Cells(Rows.Count, targKeyCol2).End(xlUp).row
-    End If
-    
-    Dim hasReg As Boolean
-    hasReg = Not IsMissing(reg)
-    Dim test As Boolean
-    test = True
-    
-    If IsArray(targValCol) Then
-        ' the number of cols
-        pRngCol = UBound(targValCol) - LBound(targValCol) + 1
+        Dim dict As Object
+        Set dict = CreateObject("Scripting.Dictionary")
+        dict.compareMode = vbTextCompare
         
-        If pRngCol = 1 Then
-            targValCol = targValCol(LBound(targValCol))
+        If IsMissing(targRowBegine) Then
+            targRowBegine = 1
         End If
-    Else
-        pRngCol = 1
-    End If
-    
-    Dim tmpPreviousRow As Integer
-    Dim tmpCurrentRow As Integer
-    Dim tmpDict As New Dicts
-    
-    tmpPreviousRow = targRowEnd
-    tmpCurrentRow = tmpPreviousRow
-    
-    Do While tmpCurrentRow > targRowBegine
-        tmpCurrentRow = Cells(tmpCurrentRow, targKeyCol1).End(xlUp).row
         
-        If pRngCol = 1 Then
-            Call tmpDict.load("", targKeyCol2, targValCol, tmpCurrentRow + 1, tmpPreviousRow, reg, True)
+        If IsMissing(targRowEnd) Then
+            targRowEnd = .Cells(Rows.Count, targKeyCol2).End(xlUp).row
+        End If
+        
+        Dim hasReg As Boolean
+        hasReg = Not IsMissing(reg)
+        Dim test As Boolean
+        test = True
+        
+        If IsArray(targValCol) Then
+            ' the number of cols
+            pRngCol = UBound(targValCol) - LBound(targValCol) + 1
+            
+            If pRngCol = 1 Then
+                targValCol = targValCol(LBound(targValCol))
+            End If
         Else
-            Call tmpDict.loadRng("", targKeyCol2, targValCol, tmpCurrentRow + 1, tmpPreviousRow, reg)
+            pRngCol = 1
         End If
         
-        Set dict(Trim(CStr(Cells(tmpCurrentRow, targKeyCol1).Value))) = tmpDict
+        Dim tmpPreviousRow As Integer
+        Dim tmpCurrentRow As Integer
+        Dim tmpDict As New Dicts
         
-        Set tmpDict = Nothing
+        tmpPreviousRow = targRowEnd
+        tmpCurrentRow = tmpPreviousRow
         
-        tmpPreviousRow = tmpCurrentRow - 1
-    Loop
+        Do While tmpCurrentRow > targRowBegine
+            tmpCurrentRow = .Cells(tmpCurrentRow, targKeyCol1).End(xlUp).row
+            
+            If pRngCol = 1 Then
+                Call tmpDict.load("", targKeyCol2, targValCol, tmpCurrentRow + 1, tmpPreviousRow, reg, True)
+            Else
+                Call tmpDict.loadRng("", targKeyCol2, targValCol, tmpCurrentRow + 1, tmpPreviousRow, reg)
+            End If
+            
+            Set dict(Trim(CStr(.Cells(tmpCurrentRow, targKeyCol1).Value))) = tmpDict
+            
+            Set tmpDict = Nothing
+            
+            tmpPreviousRow = tmpCurrentRow - 1
+        Loop
     
-    Worksheets(tmpname).Activate
+    End With
 
     If Not pIsDictFilled Then
         Set pDict = dict
@@ -1451,9 +1451,9 @@ Public Function rng(ByVal start As Integer, ByVal ending As Integer)
     rng = res
 End Function
 
-Public Function y(Optional ByVal sht As String = "", Optional ByVal col As Integer = 1, Optional ByVal wb As String = "") As Long
+Public Function Y(Optional ByVal sht As String = "", Optional ByVal col As Integer = 1, Optional ByVal wb As String = "") As Long
     
-    y = getTargetWorksheet(sht, wb).Cells(Rows.Count, col).End(xlUp).row
+    Y = getTargetWorksheet(sht, wb).Cells(Rows.Count, col).End(xlUp).row
     
 End Function
 
