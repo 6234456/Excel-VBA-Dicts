@@ -1,9 +1,11 @@
+
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                          Util Class Dicts
 '@author                        Qiou Yang
-'@lastUpdate                    12.08.2016
-'                               add getNamedVal
-'                               (only applicable to the numeric items due to the reduce function)
+'@lastUpdate                    06.11.2016
+'                               add x
+'                               add y
+'                               load/loadAddress function internal implementation modified  / will not change worksheet
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
@@ -69,21 +71,32 @@ Public Property Let columnRange(ByVal rng As Integer)
 End Property
 
 Public Property Get Count() As Integer
+    On Error GoTo cntArrayHdl
+
     Count = pDict.Count
+
+cntArrayHdl:
+    If Err.Number <> 0 Then
+        Count = 0
+    End If
 End Property
 
 Public Property Get keysArr() As Variant
-    Dim res()
-    ReDim res(0 To Me.Count - 1)
     
-    Dim k
-    Dim cnt As Integer
-    cnt = 0
+    Dim res() As String
     
-    For Each k In Me.Keys
-        res(cnt) = k
-        cnt = cnt + 1
-    Next k
+    If Me.Count > 0 Then
+        ReDim res(0 To Me.Count - 1)
+        
+        Dim k
+        Dim cnt As Integer
+        cnt = 0
+        
+        For Each k In Me.Keys
+            res(cnt) = CStr(k)
+            cnt = cnt + 1
+        Next k
+    End If
     
     keysArr = res
 End Property
@@ -160,102 +173,102 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
     Dim tmpname As String
     Dim i As Integer
     
-    tmpname = ActiveSheet.name
+    tmpname = ActiveSheet.Name
     If Trim(targSht) = "" Then
         targSht = tmpname
     End If
     
-    Worksheets(targSht).Activate
+    With Worksheets(targSht)
     
-    Dim dict As Object
-    Set dict = CreateObject("Scripting.Dictionary")
-    dict.compareMode = vbTextCompare
-    
-    If IsMissing(targRowBegine) Then
-        targRowBegine = 1
-    End If
-    
-    If IsMissing(targRowEnd) Then
-        targRowEnd = Cells(Rows.Count, targKeyCol).End(xlUp).Row
-    End If
-    
-    Dim hasReg As Boolean
-    hasReg = Not IsMissing(reg)
-    Dim test As Boolean
-    test = True
-    
-    
-    Dim myKey As Variant
-    Dim myVal As Variant
-    
-    ' pReversedMode
-    Dim startOrder
-    Dim endOrder
-    Dim stepOrder
-    
-    
-    If targRowBegine < targRowEnd Then
-        Dim arr1()
-        arr1 = Range(Cells(targRowBegine, targKeyCol), Cells(targRowEnd, targKeyCol))
+        Dim dict As Object
+        Set dict = CreateObject("Scripting.Dictionary")
+        dict.compareMode = vbTextCompare
         
-        
-        If pReversedMode Then
-            startOrder = UBound(arr1)
-            endOrder = LBound(arr1)
-            stepOrder = -1
-        Else
-            endOrder = UBound(arr1)
-            startOrder = LBound(arr1)
-            stepOrder = 1
+        If IsMissing(targRowBegine) Then
+            targRowBegine = 1
         End If
-
-        For i = startOrder To endOrder Step stepOrder
-            myKey = Trim(CStr(arr1(i, 1)))
+        
+        If IsMissing(targRowEnd) Then
+            targRowEnd = .Cells(Rows.Count, targKeyCol).End(xlUp).row
+        End If
+        
+        Dim hasReg As Boolean
+        hasReg = Not IsMissing(reg)
+        Dim test As Boolean
+        test = True
+        
+        
+        Dim myKey As Variant
+        Dim myVal As Variant
+        
+        ' pReversedMode
+        Dim startOrder
+        Dim endOrder
+        Dim stepOrder
+        
+        
+        If targRowBegine < targRowEnd Then
+            Dim arr1()
+            arr1 = .Cells(targRowBegine, targKeyCol).Resize(targRowEnd - targRowBegine + 1, 1).Value
             
-            If Not isR1C1 Then
-                myVal = Cells(i + targRowBegine - 1, targValCol).Address(0, 0)
+            
+            If pReversedMode Then
+                startOrder = UBound(arr1)
+                endOrder = LBound(arr1)
+                stepOrder = -1
             Else
-                myVal = Cells(i + targRowBegine - 1, targValCol).Address(ReferenceStyle:=xlR1C1)
+                endOrder = UBound(arr1)
+                startOrder = LBound(arr1)
+                stepOrder = 1
             End If
+    
+            For i = startOrder To endOrder Step stepOrder
+                myKey = Trim(CStr(arr1(i, 1)))
+                
+                If Not isR1C1 Then
+                    myVal = .Cells(i + targRowBegine - 1, targValCol).Address(0, 0)
+                Else
+                    myVal = .Cells(i + targRowBegine - 1, targValCol).Address(ReferenceStyle:=xlR1C1)
+                End If
+                
+                If myKey <> "" Then
+                
+                    If hasReg Then
+                       test = reg.test(myKey)
+                    End If
+                   
+    
+                    If test Then
+                         dict(myKey) = myVal
+                    End If
+                    
+                End If
+                
+                test = True
+            Next
+        ElseIf targRowBegine = targRowEnd Then
+            myKey = Trim(CStr(.Cells(targRowBegine, targKeyCol).Value))
+            myVal = .Cells(targRowBegine, targValCol).Address(0, 0)
             
             If myKey <> "" Then
-            
+                
                 If hasReg Then
                    test = reg.test(myKey)
                 End If
                
-
+    
                 If test Then
                      dict(myKey) = myVal
                 End If
-                
+                    
             End If
             
-            test = True
-        Next
-    ElseIf targRowBegine = targRowEnd Then
-        myKey = Trim(CStr(Cells(targRowBegine, targKeyCol).Value))
-        myVal = Cells(targRowBegine, targValCol).Address(0, 0)
-        
-        If myKey <> "" Then
-            
-            If hasReg Then
-               test = reg.test(myKey)
-            End If
-           
-
-            If test Then
-                 dict(myKey) = myVal
-            End If
-                
+        Else
+            Err.Raise 8888, , "endRow must be bigger than startRow!"
         End If
-        
-    Else
-        Err.Raise 8888, , "endRow must be bigger than startRow!"
-    End If
    
     
-    Worksheets(tmpname).Activate
+    End With
     
     
     ' strictMode
@@ -319,74 +332,104 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
     Dim tmpname As String
     Dim i As Integer
     
-    tmpname = ActiveSheet.name
+    tmpname = ActiveSheet.Name
     If Trim(targSht) = "" Then
         targSht = tmpname
     End If
     
-    Worksheets(targSht).Activate
+    With Worksheets(targSht)
     
-    Dim dict As Object
-    Set dict = CreateObject("Scripting.Dictionary")
-    dict.compareMode = vbTextCompare
-    
-    If IsMissing(targRowBegine) Then
-        targRowBegine = 1
-    End If
-    
-    If IsMissing(targRowEnd) Then
-        targRowEnd = Cells(Rows.Count, targKeyCol).End(xlUp).Row
-    End If
-    
-    Dim hasReg As Boolean
-    hasReg = Not IsMissing(reg)
-    Dim test As Boolean
-    test = True
-    
-    
-    Dim hasIgnoreNull As Boolean
-    hasIgnoreNull = (Not IsMissing(ignoreNullVal)) And ignoreNullVal
-    
-    Dim hasNullVal As Boolean
-    hasNullVal = (Not IsMissing(setNullValto))
-    
-   
-    
-    Dim myKey As Variant
-    Dim myVal As Variant
-    
-    ' pReversedMode
-    Dim startOrder
-    Dim endOrder
-    Dim stepOrder
-    
-    
-    If targRowBegine < targRowEnd Then
-        Dim arr1()
-        Dim arr2()
-        arr1 = Range(Cells(targRowBegine, targKeyCol), Cells(targRowEnd, targKeyCol))
+        Dim dict As Object
+        Set dict = CreateObject("Scripting.Dictionary")
+        dict.compareMode = vbTextCompare
         
-        If Not IsArray(targValCol) Then
-            arr2 = Range(Cells(targRowBegine, targValCol), Cells(targRowEnd, targValCol))
-        Else
-            arr2 = rngCol(targRowBegine, targRowEnd, targValCol)
+        If IsMissing(targRowBegine) Then
+            targRowBegine = 1
         End If
         
-        
-        If pReversedMode Then
-            startOrder = UBound(arr1)
-            endOrder = LBound(arr1)
-            stepOrder = -1
-        Else
-            endOrder = UBound(arr1)
-            startOrder = LBound(arr1)
-            stepOrder = 1
+        If IsMissing(targRowEnd) Then
+            targRowEnd = .Cells(Rows.Count, targKeyCol).End(xlUp).row
         End If
         
+        Dim hasReg As Boolean
+        hasReg = Not IsMissing(reg)
+        Dim test As Boolean
+        test = True
+        
+        
+        Dim hasIgnoreNull As Boolean
+        hasIgnoreNull = (Not IsMissing(ignoreNullVal)) And ignoreNullVal
+        
+        Dim hasNullVal As Boolean
+        hasNullVal = (Not IsMissing(setNullValto))
+        
+       
+        
+        Dim myKey As Variant
+        Dim myVal As Variant
+        
+        ' pReversedMode
+        Dim startOrder
+        Dim endOrder
+        Dim stepOrder
+        
+        
+        If targRowBegine < targRowEnd Then
+            Dim arr1()
+            Dim arr2()
+            arr1 = .Cells(targRowBegine, targKeyCol).Resize(targRowEnd - targRowBegine + 1, 1).Value
+            
+            If Not IsArray(targValCol) Then
+                arr2 = .Cells(targRowBegine, targValCol).Resize(targRowEnd - targRowBegine + 1, 1).Value
+            Else
+                arr2 = rngCol(targRowBegine, targRowEnd, targValCol)
+            End If
+            
+            
+            If pReversedMode Then
+                startOrder = UBound(arr1)
+                endOrder = LBound(arr1)
+                stepOrder = -1
+            Else
+                endOrder = UBound(arr1)
+                startOrder = LBound(arr1)
+                stepOrder = 1
+            End If
+            
+        
+            For i = startOrder To endOrder Step stepOrder
+                myKey = Trim(CStr(arr1(i, 1)))
+                myVal = arr2(i, 1)
+                
+                If myKey <> "" Then
+                
+                    If hasReg Then
+                       test = reg.test(myKey)
+                    End If
+                    
+                    If test And hasIgnoreNull Then
+                        test = (Trim(CStr(myVal)) <> "" And myVal <> 0)
+                    End If
+                    
+                    If test Then
+                        If hasNullVal And (Trim(CStr(myVal)) = "" Or myVal = 0) Then
+                            dict(myKey) = setNullValto
+                            Else: dict(myKey) = myVal
+                        End If
+                    End If
+                End If
+                
+                test = True
+            Next
+        Else
+            myKey = Trim(CStr(.Cells(targRowBegine, targKeyCol).Value))
+            
+            If Not IsArray(targValCol) Then
+                myVal = .Cells(targRowBegine, targValCol).Value
+            Else
+                myVal = rngCol(targRowBegine, targRowEnd, targValCol)(1, 1)
+            End If
     
-        For i = startOrder To endOrder Step stepOrder
-            myKey = Trim(CStr(arr1(i, 1)))
-            myVal = arr2(i, 1)
             
             If myKey <> "" Then
             
@@ -405,40 +448,9 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
                     End If
                 End If
             End If
-            
-            test = True
-        Next
-    Else
-        myKey = Trim(CStr(Cells(targRowBegine, targKeyCol).Value))
-        
-        If Not IsArray(targValCol) Then
-            myVal = Cells(targRowBegine, targValCol).Value
-        Else
-            myVal = rngCol(targRowBegine, targRowEnd, targValCol)(1, 1)
         End If
-
-        
-        If myKey <> "" Then
-        
-            If hasReg Then
-               test = reg.test(myKey)
-            End If
-            
-            If test And hasIgnoreNull Then
-                test = (Trim(CStr(myVal)) <> "" And myVal <> 0)
-            End If
-            
-            If test Then
-                If hasNullVal And (Trim(CStr(myVal)) = "" Or myVal = 0) Then
-                    dict(myKey) = setNullValto
-                    Else: dict(myKey) = myVal
-                End If
-            End If
-        End If
-    End If
    
-    
-    Worksheets(tmpname).Activate
+    End With
     
     
     ' strictMode
@@ -500,7 +512,7 @@ Public Sub loadStruct(ByVal targSht As String, ByVal targKeyCol1 As Integer, ByV
     Dim tmpname As String
     Dim i As Integer
     
-    tmpname = ActiveSheet.name
+    tmpname = ActiveSheet.Name
     If Trim(targSht) = "" Then
         targSht = tmpname
     End If
@@ -516,7 +528,7 @@ Public Sub loadStruct(ByVal targSht As String, ByVal targKeyCol1 As Integer, ByV
     End If
     
     If IsMissing(targRowEnd) Then
-        targRowEnd = Cells(Rows.Count, targKeyCol2).End(xlUp).Row
+        targRowEnd = Cells(Rows.Count, targKeyCol2).End(xlUp).row
     End If
     
     Dim hasReg As Boolean
@@ -543,7 +555,7 @@ Public Sub loadStruct(ByVal targSht As String, ByVal targKeyCol1 As Integer, ByV
     tmpCurrentRow = tmpPreviousRow
     
     Do While tmpCurrentRow > targRowBegine
-        tmpCurrentRow = Cells(tmpCurrentRow, targKeyCol1).End(xlUp).Row
+        tmpCurrentRow = Cells(tmpCurrentRow, targKeyCol1).End(xlUp).row
         
         If pRngCol = 1 Then
             Call tmpDict.load("", targKeyCol2, targValCol, tmpCurrentRow + 1, tmpPreviousRow, reg, True)
@@ -580,7 +592,7 @@ Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal t
     Dim tmpname As String
     Dim i As Integer
     
-    tmpname = ActiveSheet.name
+    tmpname = ActiveSheet.Name
     If Trim(targSht) = "" Then
         targSht = tmpname
     End If
@@ -596,7 +608,7 @@ Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal t
     End If
     
     If IsMissing(targRowEnd) Then
-        targRowEnd = Cells(Rows.Count, targKeyCol).End(xlUp).Row
+        targRowEnd = Cells(Rows.Count, targKeyCol).End(xlUp).row
     End If
     
     Dim hasReg As Boolean
@@ -721,7 +733,7 @@ End Function
 Public Sub unload(ByVal shtName As String, ByVal keyCol As Long, ByVal startingRow As Long, ByVal startingCol As Long, Optional ByVal endRow As Long, Optional ByVal endCol As Long)
 
     Dim tmpname As String
-    tmpname = ActiveSheet.name
+    tmpname = ActiveSheet.Name
     
     If Trim(shtName) = "" Then
         shtName = tmpname
@@ -732,7 +744,7 @@ Public Sub unload(ByVal shtName As String, ByVal keyCol As Long, ByVal startingR
     
     
     If IsMissing(endRow) Or endRow = 0 Then
-        endRow = Worksheets(shtName).Cells(Rows.Count, keyCol).End(xlUp).Row
+        endRow = Worksheets(shtName).Cells(Rows.Count, keyCol).End(xlUp).row
     End If
     
     Dim c
@@ -742,7 +754,7 @@ Public Sub unload(ByVal shtName As String, ByVal keyCol As Long, ByVal startingR
  
         For Each c In Range(Cells(startingRow, keyCol), Cells(endRow, keyCol)).Cells
             If pDict.exists(Trim(CStr(c.Value))) Then
-                Cells(c.Row, startingCol).Value = pDict(Trim(CStr(c.Value)))
+                Cells(c.row, startingCol).Value = pDict(Trim(CStr(c.Value)))
             End If
         Next c
     Else
@@ -757,7 +769,7 @@ Public Sub unload(ByVal shtName As String, ByVal keyCol As Long, ByVal startingR
         
         For Each c In Range(Cells(startingRow, keyCol), Cells(endRow, keyCol)).Cells
             If pDict.exists(Trim(CStr(c.Value))) Then
-                Cells(c.Row, startingCol).Resize(1, tmpC) = pDict(Trim(CStr(c.Value)))
+                Cells(c.row, startingCol).Resize(1, tmpC) = pDict(Trim(CStr(c.Value)))
             End If
         Next c
     
@@ -907,6 +919,49 @@ Public Function mapKey(ByRef d As Dicts) As Dicts
     Next k
 
     Set mapKey = res
+
+End Function
+
+'''''''
+'@param   re: RegExp-Obj with group
+'         pos: the position of the group which is designated as the new key
+''''''''
+Public Function mapKeyReg(ByRef re As Object, Optional ByVal pos As Integer = 0) As Dicts
+    Dim res As Dicts
+    Set res = New Dicts
+    Call res.ini
+
+    Dim k
+
+    For Each k In pDict.Keys
+        If re.test(k) Then
+            res.dict(re.Execute(k)(0).submatches(pos)) = pDict.item(k)
+        End If
+    Next k
+
+    Set mapKeyReg = res
+
+End Function
+
+
+'''''''
+'@param   re: RegExp-Obj with group
+'         pos: the position of the group which is designated as the new val
+''''''''
+Public Function mapValReg(ByRef re As Object, Optional ByVal pos As Integer = 0) As Dicts
+    Dim res As Dicts
+    Set res = New Dicts
+    Call res.ini
+
+    Dim k
+
+    For Each k In pDict.Keys
+        If re.test(pDict.item(k)) Then
+            res.dict(k) = re.Execute(pDict.item(k))(0).submatches(pos)
+        End If
+    Next k
+
+    Set mapValReg = res
 
 End Function
 
@@ -1065,7 +1120,7 @@ Public Function filterVal(ByVal operation As String, Optional ByVal placeholder 
     
 End Function
 
-Public Function filterExklude(ByVal reg As Object) As Dicts
+Public Function filterExclude(ByVal reg As Object) As Dicts
     
     Dim k
     
@@ -1079,11 +1134,11 @@ Public Function filterExklude(ByVal reg As Object) As Dicts
       End If
     Next k
     
-    Set filterExklude = res
+    Set filterExclude = res
     
 End Function
 
-Public Function filterInklude(ByVal reg As Object) As Dicts
+Public Function filterInclude(ByVal reg As Object) As Dicts
     
     Dim k
     
@@ -1097,7 +1152,7 @@ Public Function filterInklude(ByVal reg As Object) As Dicts
       End If
     Next k
     
-    Set filterInklude = res
+    Set filterInclude = res
     
 End Function
 
@@ -1368,16 +1423,16 @@ Public Function reg(ByVal pattern As String, Optional ByVal flag As String) As O
     obj.pattern = pattern
     
     If IsMissing(flag) Then
-        obj.IgnoreCase = True
+        obj.IgnoreCase = False
     Else
     ' "gi"
         If InStr(StrConv(flag, vbLowerCase), "g") > 0 Then
             obj.Global = True
         End If
         
-        ' i by default to true
+        ' i by default to false
         If InStr(StrConv(flag, vbLowerCase), "i") > 0 Then
-            obj.IgnoreCase = False
+            obj.IgnoreCase = True
         End If
     End If
     
@@ -1394,6 +1449,35 @@ Public Function rng(ByVal start As Integer, ByVal ending As Integer)
     Next i
     
     rng = res
+End Function
+
+Public Function y(Optional ByVal sht As String = "", Optional ByVal col As Integer = 1, Optional ByVal wb As String = "") As Long
+    
+    y = getTargetWorksheet(sht, wb).Cells(Rows.Count, col).End(xlUp).row
+    
+End Function
+
+Public Function x(Optional ByVal sht As String = "", Optional ByVal row As Integer = 1, Optional ByVal wb As String = "") As Long
+    
+    x = getTargetWorksheet(sht, wb).Cells(row, Columns.Count).End(xlToLeft).Column
+    
+End Function
+
+Private Function getTargetWorksheet(Optional ByVal sht As String = "", Optional ByVal wb As String = "") As Worksheet
+    Dim shtObj As Worksheet
+
+    If sht = "" Then
+        Set shtObj = ActiveSheet
+    Else
+        If wb = "" Then
+            Set shtObj = Worksheets(sht)
+        Else
+            Set shtObj = Workbooks(wb).Worksheets(sht)
+        End If
+    End If
+    
+    Set getTargetWorksheet = shtObj
+
 End Function
 
 
@@ -1467,7 +1551,7 @@ End Function
 Public Function getTargetColumn(ByVal targSht As String, ByVal targCol As Integer, Optional ByVal targRowBegine, Optional ByVal targRowEnd) As Range
     Dim tmpname As String
     
-    tmpname = ActiveSheet.name
+    tmpname = ActiveSheet.Name
     If Trim(targSht) = "" Then
         targSht = tmpname
     End If
@@ -1477,7 +1561,7 @@ Public Function getTargetColumn(ByVal targSht As String, ByVal targCol As Intege
     End If
     
     If IsMissing(targRowEnd) Then
-        targRowEnd = Worksheets(targSht).Cells(Rows.Count, targCol).End(xlUp).Row
+        targRowEnd = Worksheets(targSht).Cells(Rows.Count, targCol).End(xlUp).row
     End If
     
     Set getTargetColumn = Worksheets(targSht).Cells(targRowBegine, targCol).Resize(targRowEnd - targRowBegine + 1, 1)
