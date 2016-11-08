@@ -1,4 +1,3 @@
-
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                          Util Class Dicts
 '@author                        Qiou Yang
@@ -325,7 +324,7 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
 End Sub
 
 
-Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant, Optional ByVal ignoreNullVal As Boolean, Optional ByVal setNullValto As Variant)
+Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant, Optional ByVal ignoreNullVal As Boolean, Optional ByVal setNullValTo As Variant)
     
   ' store the name of current sheet
 
@@ -361,7 +360,7 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
         hasIgnoreNull = (Not IsMissing(ignoreNullVal)) And ignoreNullVal
         
         Dim hasNullVal As Boolean
-        hasNullVal = (Not IsMissing(setNullValto))
+        hasNullVal = (Not IsMissing(setNullValTo))
         
        
         
@@ -413,7 +412,7 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
                     
                     If test Then
                         If hasNullVal And (Trim(CStr(myVal)) = "" Or myVal = 0) Then
-                            dict(myKey) = setNullValto
+                            dict(myKey) = setNullValTo
                             Else: dict(myKey) = myVal
                         End If
                     End If
@@ -443,7 +442,7 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
                 
                 If test Then
                     If hasNullVal And (Trim(CStr(myVal)) = "" Or myVal = 0) Then
-                        dict(myKey) = setNullValto
+                        dict(myKey) = setNullValTo
                         Else: dict(myKey) = myVal
                     End If
                 End If
@@ -558,9 +557,9 @@ Public Sub loadStruct(ByVal targSht As String, ByVal targKeyCol1 As Integer, ByV
             tmpCurrentRow = .Cells(tmpCurrentRow, targKeyCol1).End(xlUp).row
             
             If pRngCol = 1 Then
-                Call tmpDict.load("", targKeyCol2, targValCol, tmpCurrentRow + 1, tmpPreviousRow, reg, True)
+                Call tmpDict.load(targSht, targKeyCol2, targValCol, tmpCurrentRow + 1, tmpPreviousRow, reg, True)
             Else
-                Call tmpDict.loadRng("", targKeyCol2, targValCol, tmpCurrentRow + 1, tmpPreviousRow, reg)
+                Call tmpDict.loadRng(targSht, targKeyCol2, targValCol, tmpCurrentRow + 1, tmpPreviousRow, reg)
             End If
             
             Set dict(Trim(CStr(.Cells(tmpCurrentRow, targKeyCol1).Value))) = tmpDict
@@ -740,41 +739,42 @@ Public Sub unload(ByVal shtName As String, ByVal keyCol As Long, ByVal startingR
     End If
 
     
-    Worksheets(shtName).Activate
+    With Worksheets(shtName)
     
     
-    If IsMissing(endRow) Or endRow = 0 Then
-        endRow = Worksheets(shtName).Cells(Rows.Count, keyCol).End(xlUp).row
-    End If
+       If IsMissing(endRow) Or endRow = 0 Then
+           endRow = .Cells(Rows.Count, keyCol).End(xlUp).row
+       End If
+       
+       Dim c
+       
+       
+       If IsMissing(endCol) Or endCol = 0 Then
     
-    Dim c
-    
-    
-    If IsMissing(endCol) Or endCol = 0 Then
- 
-        For Each c In Range(Cells(startingRow, keyCol), Cells(endRow, keyCol)).Cells
-            If pDict.exists(Trim(CStr(c.Value))) Then
-                Cells(c.row, startingCol).Value = pDict(Trim(CStr(c.Value)))
-            End If
-        Next c
-    Else
-        
-        Dim tmpC As Integer
-        
-        If endCol <> 0 And pRngCol > endCol - startingCol + 1 Then
-            tmpC = endCol - startingCol + 1
-        Else
-            tmpC = pRngCol
-        End If
-        
-        For Each c In Range(Cells(startingRow, keyCol), Cells(endRow, keyCol)).Cells
-            If pDict.exists(Trim(CStr(c.Value))) Then
-                Cells(c.row, startingCol).Resize(1, tmpC) = pDict(Trim(CStr(c.Value)))
-            End If
-        Next c
-    
-    End If
-    Worksheets(tmpname).Activate
+           For Each c In .Cells(startingRow, keyCol).Resize(endRow - startingRow + 1, 1).Cells
+               If pDict.exists(Trim(CStr(c.Value))) Then
+                   .Cells(c.row, startingCol).Value = pDict(Trim(CStr(c.Value)))
+               End If
+           Next c
+       Else
+           
+           Dim tmpC As Integer
+           
+           If endCol <> 0 And pRngCol > endCol - startingCol + 1 Then
+               tmpC = endCol - startingCol + 1
+           Else
+               tmpC = pRngCol
+           End If
+           
+           For Each c In .Cells(startingRow, keyCol).Resize(endRow - startingRow + 1, 1).Cells
+               If pDict.exists(Trim(CStr(c.Value))) Then
+                   .Cells(c.row, startingCol).Resize(1, tmpC) = pDict(Trim(CStr(c.Value)))
+               End If
+           Next c
+       
+       End If
+       
+    End With
 
 End Sub
 
