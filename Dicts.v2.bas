@@ -1,9 +1,10 @@
+
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                          Util Class Dicts
 '@author                        Qiou Yang
-'@lastUpdate                    06.11.2016
+'@lastUpdate                    10.11.2016
 '                               add x
-'                               add y
+'                               add ps (print struct)
 '                               load/loadAddress/loadStruct function internal implementation modified  / will not change worksheet
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -840,12 +841,8 @@ Public Function minus(ByVal dict2 As Dicts) As Dicts
 End Function
 
 '
-Public Function add(dict2 As Dicts, Optional keepOriginalVal As Boolean) As Dicts
+Public Function add(dict2 As Dicts, Optional ByVal keepOriginalVal As Boolean = True) As Dicts
 
-    If IsMissing(keepOriginalVal) Then
-        keepOriginalVal = True
-    End If
-    
     Dim k
     
     Dim res As Dicts
@@ -940,6 +937,22 @@ Public Function mapKeyReg(ByRef re As Object, Optional ByVal pos As Integer = 0)
     Next k
 
     Set mapKeyReg = res
+
+End Function
+
+
+Public Function mapKeyX(ByVal operation As String, Optional ByVal placeholder As String = "{*}") As Dicts
+    Dim res As Dicts
+    Set res = New Dicts
+    Call res.ini
+
+    Dim k
+
+    For Each k In pDict.Keys
+        res.dict(Application.Evaluate(Replace(operation, placeholder, CStr(k)))) = pDict.item(k)
+    Next k
+
+    Set mapKeyX = res
 
 End Function
 
@@ -1399,6 +1412,23 @@ Public Function pk()
 
 End Function
 
+Public Function ps(Optional ByVal lvl As Integer = 1, Optional ByVal cnt As Integer = 0)
+    
+    Dim k
+    
+    If cnt = lvl Then
+        For Each k In Me.dict.Keys
+            Debug.Print String(cnt, Chr(9)) & k & Chr(9) & Me.dict(k)
+        Next k
+    Else
+        For Each k In Me.dict.Keys
+            Debug.Print String(cnt, Chr(9)) & k
+            Me.dict(k).ps lvl, cnt + 1
+        Next k
+    End If
+    
+
+End Function
 
 Public Function toJSON(Optional ByVal k As String = "root") As String
     Dim res As String
