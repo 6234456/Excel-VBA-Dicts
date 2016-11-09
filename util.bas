@@ -42,7 +42,7 @@ Public Sub processWorkbooksInthePath(Optional ByVal path As String = "src", Opti
     For Each i In p.Files
         fName = i.name
         If Left(fName, 1) <> "~" And re.test(fName) And fName <> this.name Then
-            Application.Workbooks.Open fName, 0, readOnly
+                Application.Workbooks.Open targPath & "\" & fName, 0, readOnly
             
             Set that = ActiveWorkbook
             
