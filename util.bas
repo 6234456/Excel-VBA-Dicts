@@ -127,14 +127,14 @@ Private Sub mergeCells(ByRef rng As Range, Optional ByVal orient As String = "v"
 
 End Sub
 
-Function groupAndSum(ByVal targKeyCol1 As Integer, ByVal targKeyCol2 As Integer, Optional ByVal targValCol, Optional ByVal targRowBegine, Optional ByVal targRowEnd)
+Function groupAndSum(ByVal targKeyCol1 As Integer, ByVal targKeyCol2 As Integer, Optional ByVal targValCol, Optional ByVal targRowBegine, Optional ByVal targRowEnd, Optional ByVal sorted As Boolean = False)
     
     If IsMissing(targRowBegine) Then
         targRowBegine = 1
     End If
     
     If IsMissing(targRowEnd) Then
-        targRowEnd = Cells(Rows.Count, targKeyCol2).End(xlUp).Row
+        targRowEnd = Cells(Rows.Count, targKeyCol2).End(xlUp).row
     End If
     
      If IsMissing(targValCol) Then
@@ -151,11 +151,23 @@ Function groupAndSum(ByVal targKeyCol1 As Integer, ByVal targKeyCol2 As Integer,
      Do While tmpCurrentRow > targRowBegine
         
         
-        tmpCurrentRow = Cells(tmpCurrentRow, targKeyCol1).End(xlUp).Row
+        tmpCurrentRow = Cells(tmpCurrentRow, targKeyCol1).End(xlUp).row
         
-
-        Range(Cells(tmpCurrentRow + 1, 1), Cells(tmpPreviousRow, 1)).Rows.Group
+        If sorted Then
+            With Range(Cells(tmpCurrentRow + 1, targKeyCol2), Cells(tmpPreviousRow, targKeyCol2))
+                If .Cells.Count > 1 Then
+                    .Sort Key1:=.Cells(1)
+                End If
+                
+                .Rows.Group
+                
+            End With
+        Else
+            Range(Cells(tmpCurrentRow + 1, 1), Cells(tmpPreviousRow, 1)).Rows.Group
         
+        End If
+        
+        ' targValCol = 0  ignore sum
         If targValCol <> 0 Then
             Cells(tmpCurrentRow, targValCol).Formula = "=SUM(" & Cells(tmpCurrentRow + 1, targValCol).Address(0, 0) & ":" & Cells(tmpPreviousRow, targValCol).Address(0, 0) & ")"
         End If
