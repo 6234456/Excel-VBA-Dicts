@@ -2,22 +2,20 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                          Util Class Dicts
 '@author                        Qiou Yang
-'@lastUpdate                    10.11.2016
-'                               add x
-'                               add ps (print struct)
-'                               load/loadAddress/loadStruct function internal implementation modified  / will not change worksheet
+'@lastUpdate                    23.02.2017
+'                               minor bugfix
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
 
 
 Private pDict As Object
-Private pRngCol As Integer
+Private pRngCol As Long
 Private pIsDictFilled As Boolean
 Private pStrictMode As Boolean
 Private pStrictModeReg As Object
 Private pReversedMode As Boolean
-Private pLevel As Integer
+Private pLevel As Long
 Private pIsNamed As Boolean
 Private pNamedArray As Dicts
 
@@ -39,7 +37,7 @@ Public Function setNamed(ByVal rng As Variant) As Dicts
    
    Dim s As String
    Dim c
-   Dim cnt As Integer
+   Dim cnt As Long
    
    cnt = 0
    
@@ -66,11 +64,11 @@ namedArrayHdl:
    Set setNamed = Me
 End Function
 
-Public Property Let columnRange(ByVal rng As Integer)
+Public Property Let columnRange(ByVal rng As Long)
    pRngCol = rng
 End Property
 
-Public Property Get Count() As Integer
+Public Property Get Count() As Long
     On Error GoTo cntArrayHdl
 
     Count = pDict.Count
@@ -89,7 +87,7 @@ Public Property Get keysArr() As Variant
         ReDim res(0 To Me.Count - 1)
         
         Dim k
-        Dim cnt As Integer
+        Dim cnt As Long
         cnt = 0
         
         For Each k In Me.Keys
@@ -151,7 +149,7 @@ Public Sub ini()
     
     On Error GoTo Errhandler1
     
-    Dim a As Integer
+    Dim a As Long
     a = pDict.Count
     
       
@@ -166,12 +164,12 @@ Errhandler1:
 End Sub
 
 ' to add the shtName just through dict.productX("""'src'!{*}""").p
-Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant, Optional isR1C1 As Boolean = False)
+Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Long, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant, Optional isR1C1 As Boolean = False)
     
   ' store the name of current sheet
 
     Dim tmpname As String
-    Dim i As Integer
+    Dim i As Long
     
     tmpname = ActiveSheet.Name
     If Trim(targSht) = "" Then
@@ -325,12 +323,12 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Integer, ByV
 End Sub
 
 
-Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant, Optional ByVal ignoreNullVal As Boolean, Optional ByVal setNullValTo As Variant)
+Public Sub load(ByVal targSht As String, ByVal targKeyCol As Long, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant, Optional ByVal ignoreNullVal As Boolean, Optional ByVal setNullValTo As Variant)
     
   ' store the name of current sheet
 
     Dim tmpname As String
-    Dim i As Integer
+    Dim i As Long
     
     tmpname = ActiveSheet.Name
     If Trim(targSht) = "" Then
@@ -506,11 +504,11 @@ Public Sub load(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targ
     
 End Sub
 
-Public Sub loadStruct(ByVal targSht As String, ByVal targKeyCol1 As Integer, ByVal targKeyCol2 As Integer, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant)
+Public Sub loadStruct(ByVal targSht As String, ByVal targKeyCol1 As Long, ByVal targKeyCol2 As Long, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant)
       ' store the name of current sheet
 
     Dim tmpname As String
-    Dim i As Integer
+    Dim i As Long
     
     tmpname = ActiveSheet.Name
     If Trim(targSht) = "" Then
@@ -547,8 +545,8 @@ Public Sub loadStruct(ByVal targSht As String, ByVal targKeyCol1 As Integer, ByV
             pRngCol = 1
         End If
         
-        Dim tmpPreviousRow As Integer
-        Dim tmpCurrentRow As Integer
+        Dim tmpPreviousRow As Long
+        Dim tmpCurrentRow As Long
         Dim tmpDict As New Dicts
         
         tmpPreviousRow = targRowEnd
@@ -586,11 +584,11 @@ Public Sub loadStruct(ByVal targSht As String, ByVal targKeyCol1 As Integer, ByV
 End Sub
 
 
-Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant)
+Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Long, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant)
     
   ' store the name of current sheet
     Dim tmpname As String
-    Dim i As Integer
+    Dim i As Long
     
     tmpname = ActiveSheet.Name
     If Trim(targSht) = "" Then
@@ -621,9 +619,9 @@ Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Integer, ByVal t
     
     Dim myKey As Variant
     Dim myVal As Variant
-    Dim startOrder As Integer
-    Dim endOrder As Integer
-    Dim stepOrder As Integer
+    Dim startOrder As Long
+    Dim endOrder As Long
+    Dim stepOrder As Long
     
     If targRowBegine < targRowEnd Then
         Dim arr1()
@@ -759,9 +757,9 @@ Public Sub unload(ByVal shtName As String, ByVal keyCol As Long, ByVal startingR
            Next c
        Else
            
-           Dim tmpC As Integer
+           Dim tmpC As Long
            
-           If endCol <> 0 And pRngCol > endCol - startingCol + 1 Then
+           If pRngCol = 0 Then
                tmpC = endCol - startingCol + 1
            Else
                tmpC = pRngCol
@@ -809,7 +807,7 @@ End Function
 Public Function getNamedVal(ByVal nm As String) As Dicts
         
     If pIsNamed Then
-        Dim i As Integer
+        Dim i As Long
         i = pNamedArray.item(nm)
         
         Set getNamedVal = Me.reduceRngX("if({i}=" & i & ",{v}+{*},{v})")
@@ -923,7 +921,7 @@ End Function
 '@param   re: RegExp-Obj with group
 '         pos: the position of the group which is designated as the new key
 ''''''''
-Public Function mapKeyReg(ByRef re As Object, Optional ByVal pos As Integer = 0) As Dicts
+Public Function mapKeyReg(ByRef re As Object, Optional ByVal pos As Long = 0) As Dicts
     Dim res As Dicts
     Set res = New Dicts
     Call res.ini
@@ -961,7 +959,7 @@ End Function
 '@param   re: RegExp-Obj with group
 '         pos: the position of the group which is designated as the new val
 ''''''''
-Public Function mapValReg(ByRef re As Object, Optional ByVal pos As Integer = 0) As Dicts
+Public Function mapValReg(ByRef re As Object, Optional ByVal pos As Long = 0) As Dicts
     Dim res As Dicts
     Set res = New Dicts
     Call res.ini
@@ -1015,12 +1013,12 @@ End Function
 Public Function reduceRngVertical(ByVal sign As String) As Variant
     Dim k
     Dim i
-    Dim tmpCnt As Integer
+    Dim tmpCnt As Long
     tmpCnt = 1
     Dim arr()
     
-    Dim u As Integer
-    Dim l As Integer
+    Dim u As Long
+    Dim l As Long
 
     For Each k In pDict.Keys
         If tmpCnt = 1 Then
@@ -1286,7 +1284,7 @@ Public Function clone() As Dicts
 
 End Function
 
-Private Function clone__(ByVal d As Dicts, ByVal l As Integer) As Dicts
+Private Function clone__(ByVal d As Dicts, ByVal l As Long) As Dicts
     Dim res As New Dicts
     Dim k
     
@@ -1412,7 +1410,7 @@ Public Function pk()
 
 End Function
 
-Public Function ps(Optional ByVal lvl As Integer = 1, Optional ByVal cnt As Integer = 0)
+Public Function ps(Optional ByVal lvl As Long = 1, Optional ByVal cnt As Long = 0)
     
     Dim k
     
@@ -1469,11 +1467,11 @@ Public Function reg(ByVal pattern As String, Optional ByVal flag As String) As O
     Set reg = obj
 End Function
 
-Public Function rng(ByVal start As Integer, ByVal ending As Integer)
+Public Function rng(ByVal start As Long, ByVal ending As Long)
     Dim res()
     ReDim res(0 To ending - start)
     
-    Dim i As Integer
+    Dim i As Long
     For i = start To ending
         res(i - start) = i
     Next i
@@ -1481,13 +1479,13 @@ Public Function rng(ByVal start As Integer, ByVal ending As Integer)
     rng = res
 End Function
 
-Public Function Y(Optional ByVal sht As String = "", Optional ByVal col As Integer = 1, Optional ByVal wb As String = "") As Long
+Public Function y(Optional ByVal sht As String = "", Optional ByVal col As Long = 1, Optional ByVal wb As String = "") As Long
     
-    Y = getTargetWorksheet(sht, wb).Cells(Rows.Count, col).End(xlUp).row
+    y = getTargetWorksheet(sht, wb).Cells(Rows.Count, col).End(xlUp).row
     
 End Function
 
-Public Function x(Optional ByVal sht As String = "", Optional ByVal row As Integer = 1, Optional ByVal wb As String = "") As Long
+Public Function x(Optional ByVal sht As String = "", Optional ByVal row As Long = 1, Optional ByVal wb As String = "") As Long
     
     x = getTargetWorksheet(sht, wb).Cells(row, Columns.Count).End(xlToLeft).Column
     
@@ -1514,12 +1512,12 @@ End Function
 ' ________________________________________Util Functions End____________________________________________
 
 ' summe vom Range
-Private Function rngCol(ByVal startRow As Integer, ByVal endRow As Integer, ByVal arrCol As Variant)
+Private Function rngCol(ByVal startRow As Long, ByVal endRow As Long, ByVal arrCol As Variant)
     Dim res()
     ReDim res(1 To endRow - startRow + 1, 1 To 1)
     
-    Dim i As Integer
-    Dim j As Integer
+    Dim i As Long
+    Dim j As Long
     
     Dim sum As Double
     
@@ -1539,12 +1537,12 @@ Private Function rngCol(ByVal startRow As Integer, ByVal endRow As Integer, ByVa
     
 End Function
 
-Private Function rngArr(ByVal startRow As Integer, ByVal endRow As Integer, ByVal arrCol As Variant)
+Private Function rngArr(ByVal startRow As Long, ByVal endRow As Long, ByVal arrCol As Variant)
     Dim res()
     ReDim res(1 To endRow - startRow + 1, 1 To 1)
     
-    Dim i As Integer
-    Dim j As Integer
+    Dim i As Long
+    Dim j As Long
     
     Dim sum()
     ReDim sum(0 To UBound(arrCol))
@@ -1578,7 +1576,7 @@ errhandler3:
 
 End Function
 
-Public Function getTargetColumn(ByVal targSht As String, ByVal targCol As Integer, Optional ByVal targRowBegine, Optional ByVal targRowEnd) As Range
+Public Function getTargetColumn(ByVal targSht As String, ByVal targCol As Long, Optional ByVal targRowBegine, Optional ByVal targRowEnd) As Range
     Dim tmpname As String
     
     tmpname = ActiveSheet.Name
@@ -1597,3 +1595,4 @@ Public Function getTargetColumn(ByVal targSht As String, ByVal targCol As Intege
     Set getTargetColumn = Worksheets(targSht).Cells(targRowBegine, targCol).Resize(targRowEnd - targRowBegine + 1, 1)
 
 End Function
+
