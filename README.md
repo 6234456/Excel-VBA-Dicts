@@ -1,6 +1,6 @@
 ## Introduction
 
-**_Functional Programming in VBA_**
+**_Leverage the Power of Functional Programming in VBA_**
 ```
 
      Dim dict As New Dicts
@@ -11,59 +11,26 @@
 
 ## Basic Usage
 _**Example :**_ 
-* to load all the invoices with invoice number starting with 4 alphabetical letters on the spreadsheet "src"
-* to set the default pieces to be 100
+* print out all the projects with a NPV > 5 to screen.
 
 The spreadsheet "src" is as below.
 
 ```
-             A                      B
-
-     1    Invoice Number          Pieces
-
-     2    RELD 12323              1400
-
-     3    RE 12324                500
-
-     4    RELD 12325          
-
-     5    RELD 12326              100
+       ![example1](http://qiou.eu/xl/example1.PNG "example1")
 ```
 
 **_1. Create a new instance_**
 ```
-
-     Dim dict As New Dicts
-
+     Dim d As New Dicts
 ```
-**_2. Load the dict_**
+**_2. Load the dict with data in the spreadsheet_**
 ```
-
-Call dict.load("src", 1, 2, 2, , dict.reg("^[a-zA-Z]{4}\s"), False, 100)
-
+     Call d.loadRng("", 1, d.rng(2, d.x("", 1)), 2)
 ```
-**_3. Loop through dict to print the result_**
+**_3. filter it functionally and elegantly_**
 ```
-    dict.p
-```
-
-## API
-
-
-###**load**###
-_to load the range into dict_
-
-Parameters:
-```
-Byval targSht As String                             'name of the target Sheet. Empty string if target sheet is current sheet.
-ByVal targKeyCol As Integer                         'the column number of the keys in the dictionary
-ByVal targValCol                                    'the column number of the values in the dictionary
-Optional targRowBegine As Variant                   'the first row of the range, default to be 1
-Optional ByVal targRowEnd As Variant                'the last row of the range, default to be the row where key column ends
-Optional ByVal reg As Variant                       'the regular expression to filter the keys
-Optional ByVal ignoreNullVal As Boolean             'ignore if the value is null
-Optional ByVal setNullValto As Variant              'if ignoreNullVal is false, set null to this value
+     d.reduceRngX("{v}+{*}/1.1^({i}+1)").filterVal("{*}>5").p
 ```
 
 ## Support or Contact
-Having trouble with this project? You can contact sgfxqw('__at__')gmail('__dot__')com and I will help you sort it out.
+Having trouble with this project? You can contact yang('__at__')qiou('__dot__')eu and I will help you sort it out.
