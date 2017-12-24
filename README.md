@@ -11,7 +11,7 @@
 
 ## Basic Usage
 _**Example :**_ 
-* print out all the projects with a NPV > 5 to screen.
+* print out all the projects with a NPV > 5 to screen (discount rate 10%).
 
 The spreadsheet "src" is as below.
 
