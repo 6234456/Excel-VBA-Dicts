@@ -15,9 +15,9 @@ _**Example :**_
 
 The spreadsheet "src" is as below.
 
-```
+
        ![example1](http://qiou.eu/xl/example1.PNG "example1")
-```
+
 
 **_1. Create a new instance_**
 ```
