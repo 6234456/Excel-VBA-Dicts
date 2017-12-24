@@ -1,29 +1,46 @@
-
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'@desc                          Util Class Dicts
-'@author                        Qiou Yang
-'@lastUpdate                    23.02.2017
-'                               minor bugfix
+'@desc                                     Util Class Dicts
+'@author                                   Qiou Yang
+'@lastUpdate                               24.12.2017
+'                                          add docs and examples
+'                                          add test cases
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
+' declaration compulsory
 Option Explicit
 
-
+'___________private variables_____________
+'scripting.Dictionary Object
 Private pDict As Object
+
+
 Private pRngCol As Long
+
+'true to enable the append mode, default to be false
 Private pIsDictFilled As Boolean
+
+' define reg to replace none-character symbols
 Private pStrictMode As Boolean
 Private pStrictModeReg As Object
+
+' if reversed, then read from bottom up
 Private pReversedMode As Boolean
+
+' heirachry key level
 Private pLevel As Long
+
+' has column label
 Private pIsNamed As Boolean
+
+' column label as Dicts
 Private pNamedArray As Dicts
 
-
+' get the underlying Dicitionary-Object
 Public Property Get dict() As Object
     Set dict = pDict
 End Property
 
+' get/set column labels
 Public Property Get named() As Dicts
     If pIsNamed Then
         Set named = pNamedArray
@@ -32,6 +49,15 @@ Public Property Get named() As Dicts
     End If
 End Property
 
+Public Property Let named(ByVal rng As Variant)
+    setNamed rng
+End Property
+
+'''''''''''
+'@desc:     set the column/row labels to the underlying Dicts
+'@return:   this Dicts
+'@param:    rng either as Dicts or as Range
+'''''''''''
 Public Function setNamed(ByVal rng As Variant) As Dicts
    On Error GoTo namedArrayHdl
    
@@ -44,10 +70,12 @@ Public Function setNamed(ByVal rng As Variant) As Dicts
    Dim d As New Dicts
    Call d.ini
    
+   ' test if rng is a Range-Object
    s = rng.Address
    
 namedArrayHdl:
 
+    ' if rng is a Range-Object
     If Err.Number = 0 Then
         For Each c In rng.Cells
             d.dict(Trim(CStr(c.Value))) = cnt
@@ -56,6 +84,7 @@ namedArrayHdl:
         
         Me.setNamed d
     Else
+        'if rng is a Dicts-Object
         Set pNamedArray = rng
     End If
     
@@ -64,10 +93,12 @@ namedArrayHdl:
    Set setNamed = Me
 End Function
 
+' set number of columns
 Public Property Let columnRange(ByVal rng As Long)
    pRngCol = rng
 End Property
 
+' get length of the key-value pairs
 Public Property Get Count() As Long
     On Error GoTo cntArrayHdl
 
@@ -79,6 +110,7 @@ cntArrayHdl:
     End If
 End Property
 
+' get keys as Array, if no element return null-Array
 Public Property Get keysArr() As Variant
     
     Dim res() As String
@@ -99,26 +131,24 @@ Public Property Get keysArr() As Variant
     keysArr = res
 End Property
 
+' get keys as iterable-object
 Public Property Get Keys() As Variant
     Keys = pDict.Keys
 End Property
 
-
+' set underlying scripting.Dictionary Object
 Public Property Let dict(ByRef dict As Object)
     Set pDict = dict
-    'pIsDictFilled = True
 End Property
 
-Public Property Let strictModeReg(mode As Object)
-    If Not pStrictMode Then
-        pStrictMode = True
-    End If
-    
+' set RegExp-Object to filter the keys
+Public Property Let strictModeReg(ByVal mode As Object)
+    pStrictMode = True
     Set pStrictModeReg = mode
-    'pIsDictFilled = True
 End Property
 
-Public Property Let strictMode(mode As Boolean)
+' set strictMode, if false nullify the reg
+Public Property Let strictMode(ByVal mode As Boolean)
     On Error GoTo errhandler2
     Dim a As Boolean
     a = pStrictModeReg.test("")
@@ -129,39 +159,38 @@ errhandler2:
     End If
 
      pStrictMode = mode
-    'pIsDictFilled = True
 End Property
 
-
-Public Property Let reversedMode(mode As Boolean)
+' read from bottom up, relevant in case of duplicated keys
+Public Property Let reversedMode(ByVal mode As Boolean)
    pReversedMode = mode
 End Property
 
-Public Property Let appendMode(mode As Boolean)
+' set to true to enable to read from different src without overwriting the existing Dicts
+Public Property Let appendMode(ByVal mode As Boolean)
     If mode Then
         Call Me.ini
         pIsDictFilled = mode
     End If
-    
 End Property
 
+' initiate the Dictionary-Object
 Public Sub ini()
-    
     On Error GoTo Errhandler1
     
     Dim a As Long
     a = pDict.Count
     
-      
 Errhandler1:
+    ' if not yet initiated, set pDict
     If Err.Number <> 0 Then
         Set pDict = CreateObject("scripting.dictionary")
         pDict.compareMode = vbTextCompare
     End If
-    
-    ' pIsDictFilled = True
-
 End Sub
+
+'________________________load data from spreadsheet_____________________________
+
 
 ' to add the shtName just through dict.productX("""'src'!{*}""").p
 Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Long, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant, Optional isR1C1 As Boolean = False)
@@ -171,6 +200,7 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Long, ByVal 
     Dim tmpname As String
     Dim i As Long
     
+    ' empty ShtName refers to ActiveSheet
     tmpname = ActiveSheet.Name
     If Trim(targSht) = "" Then
         targSht = tmpname
@@ -190,8 +220,11 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Long, ByVal 
             targRowEnd = .Cells(Rows.Count, targKeyCol).End(xlUp).row
         End If
         
+        ' has RegExp?
         Dim hasReg As Boolean
         hasReg = Not IsMissing(reg)
+        
+        ' pass RegExp test?
         Dim test As Boolean
         test = True
         
@@ -204,7 +237,7 @@ Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Long, ByVal 
         Dim endOrder
         Dim stepOrder
         
-        
+        ' targetRowBegine can be either equal to or smaller than targetRowEnd
         If targRowBegine < targRowEnd Then
             Dim arr1()
             arr1 = .Cells(targRowBegine, targKeyCol).Resize(targRowEnd - targRowBegine + 1, 1).Value
@@ -591,93 +624,92 @@ Public Sub loadRng(ByVal targSht As String, ByVal targKeyCol As Long, ByVal targ
     Dim i As Long
     
     tmpname = ActiveSheet.Name
+    
     If Trim(targSht) = "" Then
         targSht = tmpname
     End If
     
-    Worksheets(targSht).Activate
+    With Worksheets(targSht)
     
-    Dim dict As Object
-    Set dict = CreateObject("Scripting.Dictionary")
-    dict.compareMode = vbTextCompare
-    
-    If IsMissing(targRowBegine) Then
-        targRowBegine = 1
-    End If
-    
-    If IsMissing(targRowEnd) Then
-        targRowEnd = Cells(Rows.Count, targKeyCol).End(xlUp).row
-    End If
-    
-    Dim hasReg As Boolean
-    hasReg = Not IsMissing(reg)
-    Dim test As Boolean
-    test = True
-    
-    ' the number of cols
-    pRngCol = UBound(targValCol) - LBound(targValCol) + 1
-    
-    Dim myKey As Variant
-    Dim myVal As Variant
-    Dim startOrder As Long
-    Dim endOrder As Long
-    Dim stepOrder As Long
-    
-    If targRowBegine < targRowEnd Then
-        Dim arr1()
-        Dim arr2()
-        arr1 = Range(Cells(targRowBegine, targKeyCol), Cells(targRowEnd, targKeyCol))
-        arr2 = rngArr(targRowBegine, targRowEnd, targValCol)
+        Dim dict As Object
+        Set dict = CreateObject("Scripting.Dictionary")
+        dict.compareMode = vbTextCompare
         
-        If pReversedMode Then
-            startOrder = UBound(arr1)
-            endOrder = LBound(arr1)
-            stepOrder = -1
-        Else
-            endOrder = UBound(arr1)
-            startOrder = LBound(arr1)
-            stepOrder = 1
+        If IsMissing(targRowBegine) Then
+            targRowBegine = 1
         End If
-    
-    
-        For i = startOrder To endOrder Step stepOrder
-            myKey = Trim(CStr(arr1(i, 1)))
-            myVal = arr2(i, 1)
+        
+        If IsMissing(targRowEnd) Then
+            targRowEnd = .Cells(Rows.Count, targKeyCol).End(xlUp).row
+        End If
+        
+        Dim hasReg As Boolean
+        hasReg = Not IsMissing(reg)
+        Dim test As Boolean
+        test = True
+        
+        ' the number of cols
+        pRngCol = UBound(targValCol) - LBound(targValCol) + 1
+        
+        Dim myKey As Variant
+        Dim myVal As Variant
+        Dim startOrder As Long
+        Dim endOrder As Long
+        Dim stepOrder As Long
+        
+        If targRowBegine < targRowEnd Then
+            Dim arr1()
+            Dim arr2()
+            arr1 = Range(.Cells(targRowBegine, targKeyCol), .Cells(targRowEnd, targKeyCol))
+            arr2 = rngArr(targRowBegine, targRowEnd, targValCol)
             
+            If pReversedMode Then
+                startOrder = UBound(arr1)
+                endOrder = LBound(arr1)
+                stepOrder = -1
+            Else
+                endOrder = UBound(arr1)
+                startOrder = LBound(arr1)
+                stepOrder = 1
+            End If
+        
+        
+            For i = startOrder To endOrder Step stepOrder
+                myKey = Trim(CStr(arr1(i, 1)))
+                myVal = arr2(i, 1)
+                
+                If myKey <> "" Then
+                
+                    If hasReg Then
+                       test = reg.test(myKey)
+                    End If
+                    
+                    If test Then
+                        dict(myKey) = myVal
+                    End If
+                End If
+                
+                test = True
+            Next
+        Else
+            myKey = Trim(CStr(.Cells(targRowBegine, targKeyCol).Value))
+    
+            myVal = rngArr(targRowBegine, targRowEnd, targValCol)(1, 1)
+      
             If myKey <> "" Then
             
                 If hasReg Then
                    test = reg.test(myKey)
                 End If
+    
                 
                 If test Then
                     dict(myKey) = myVal
                 End If
-            End If
             
-            test = True
-        Next
-    Else
-        myKey = Trim(CStr(Cells(targRowBegine, targKeyCol).Value))
-
-        myVal = rngArr(targRowBegine, targRowEnd, targValCol)(1, 1)
-  
-        If myKey <> "" Then
-        
-            If hasReg Then
-               test = reg.test(myKey)
             End If
-
-            
-            If test Then
-                dict(myKey) = myVal
-            End If
-        
         End If
-    End If
-   
-    
-    Worksheets(tmpname).Activate
+    End With
 
     If Not pIsDictFilled Then
         Set pDict = dict
@@ -723,7 +755,7 @@ Public Function frequencyCount(ByRef rng) As Dicts
     End If
 
     Set frequencyCount = res
-
+    Set res = Nothing
 End Function
 
 
@@ -737,17 +769,13 @@ Public Sub unload(ByVal shtName As String, ByVal keyCol As Long, ByVal startingR
         shtName = tmpname
     End If
 
-    
     With Worksheets(shtName)
-    
-    
        If IsMissing(endRow) Or endRow = 0 Then
            endRow = .Cells(Rows.Count, keyCol).End(xlUp).row
        End If
        
        Dim c
-       
-       
+
        If IsMissing(endCol) Or endCol = 0 Then
     
            For Each c In .Cells(startingRow, keyCol).Resize(endRow - startingRow + 1, 1).Cells
@@ -785,6 +813,10 @@ Public Sub dump(ByVal shtName As String, Optional ByVal keyCol As Long = 1, Opti
         startingCol = keyCol + 1
     End If
     
+    If shtName = "" Then
+        shtName = ActiveSheet.Name
+    End If
+    
     'unload the key
     Worksheets(shtName).Cells(startingRow, keyCol).Resize(Me.Count, 1) = Application.WorksheetFunction.Transpose(Me.keysArr)
     
@@ -801,6 +833,12 @@ End Function
 Public Function item(ByVal k) As Variant
     
     item = pDict(Trim(CStr(k)))
+
+End Function
+
+Public Function clear()
+    
+    pDict.RemoveAll
 
 End Function
 
@@ -821,7 +859,6 @@ End Function
 
 
 ' ________________________________________Class Collection Functions___________________________________________
-
 Public Function minus(ByVal dict2 As Dicts) As Dicts
     Dim k
     
@@ -857,6 +894,7 @@ Public Function add(dict2 As Dicts, Optional ByVal keepOriginalVal As Boolean = 
     Next k
     
     Set add = res
+    Set res = Nothing
 End Function
 
 Public Function update(ByVal dict2 As Dicts) As Dicts
@@ -922,8 +960,7 @@ End Function
 '         pos: the position of the group which is designated as the new key
 ''''''''
 Public Function mapKeyReg(ByRef re As Object, Optional ByVal pos As Long = 0) As Dicts
-    Dim res As Dicts
-    Set res = New Dicts
+    Dim res As New Dicts
     Call res.ini
 
     Dim k
@@ -935,13 +972,12 @@ Public Function mapKeyReg(ByRef re As Object, Optional ByVal pos As Long = 0) As
     Next k
 
     Set mapKeyReg = res
-
+    Set res = Nothing
 End Function
 
 
 Public Function mapKeyX(ByVal operation As String, Optional ByVal placeholder As String = "{*}") As Dicts
-    Dim res As Dicts
-    Set res = New Dicts
+    Dim res As New Dicts
     Call res.ini
 
     Dim k
@@ -951,7 +987,7 @@ Public Function mapKeyX(ByVal operation As String, Optional ByVal placeholder As
     Next k
 
     Set mapKeyX = res
-
+    Set res = Nothing
 End Function
 
 
@@ -973,7 +1009,7 @@ Public Function mapValReg(ByRef re As Object, Optional ByVal pos As Long = 0) As
     Next k
 
     Set mapValReg = res
-
+    Set res = Nothing
 End Function
 
 ' dict(k) -> Array(1,1,1,1,1)  =>  dict(k) -> 5
@@ -988,13 +1024,12 @@ Public Function reduceRng(ByVal sign As String) As Dicts
         res.dict(k) = reduceArray(pDict(k), sign)
     Next k
    
-    
     Set reduceRng = res
-    
+    Set res = Nothing
 End Function
 
 ' dict(k) -> Array(1,1,1,1,1)  =>  dict(k) -> 5
-Public Function reduceRngX(ByVal operation As String, Optional ByVal initVal As Variant = 0, Optional ByVal placeholder As String = "{*}", Optional ByVal index As String = "{i}", Optional ByVal cumVal As String = "{v}", Optional ByVal hasThousandSep As Boolean = True) As Dicts
+Public Function reduceRngX(ByVal operation As String, Optional ByVal initVal As Variant = 0, Optional ByVal placeholder As String = "{*}", Optional ByVal index As String = "{i}", Optional ByVal cumVal As String = "{v}", Optional ByVal hasThousandSep As Boolean = True, Optional ByVal valIfNull As Variant = 0) As Dicts
     Dim res As Dicts
     Set res = New Dicts
     Call res.ini
@@ -1002,12 +1037,12 @@ Public Function reduceRngX(ByVal operation As String, Optional ByVal initVal As 
     Dim k
 
     For Each k In pDict.Keys
-        res.dict(k) = reduceArrayX(pDict(k), operation, initVal, placeholder, index, cumVal, hasThousandSep)
+        res.dict(k) = reduceArrayX(pDict(k), operation, initVal, placeholder, index, cumVal, hasThousandSep, valIfNull)
     Next k
    
     
     Set reduceRngX = res
-    
+    Set res = Nothing
 End Function
 
 Public Function reduceRngVertical(ByVal sign As String) As Variant
@@ -1057,7 +1092,14 @@ Public Function reduceRngVertical(ByVal sign As String) As Variant
 
 End Function
 
-Private Function reduceArray(ByVal arr, ByVal sign As String) As Variant
+Private Function ifEmpty(ByVal targetVal As Variant, ByVal valIfNull As Variant) As Variant
+    
+   ifEmpty = IIf(IsEmpty(targetVal), valIfNull, targetVal)
+
+End Function
+
+
+Private Function reduceArray(ByVal arr, ByVal sign As String, Optional ByVal valIfNull As Variant = 0) As Variant
     Dim res As Variant
     Dim k
     
@@ -1065,12 +1107,12 @@ Private Function reduceArray(ByVal arr, ByVal sign As String) As Variant
     If sign = "" Or sign = "+" Then
         res = 0
         For Each k In arr
-            res = res + k
+            res = res + ifEmpty(k, valIfNull)
         Next k
     ElseIf sign = "*" Then
         res = 1
         For Each k In arr
-            res = res * k
+            res = res * ifEmpty(k, valIfNull)
         Next k
     End If
     
@@ -1078,28 +1120,36 @@ Private Function reduceArray(ByVal arr, ByVal sign As String) As Variant
     
 End Function
 
-Public Function reduceArrayX(ByVal arr, ByVal operation As String, Optional ByVal initVal As Variant = 0, Optional ByVal placeholder As String = "{*}", Optional ByVal index As String = "{i}", Optional ByVal cumVal As String = "{v}", Optional ByVal hasThousandSep As Boolean = True) As Variant
-    
+'''''''''''''''''''''''''''
+'@desc:     reduceArrayX -> reduce the array as value through the operation defined
+'           ref. reduceRngX
+'@param:    arr             array to be reduced
+'           operation       operation to be performed on the array, e.g. get the sum of array "{v}+{*}"
+'           initVal         the inital value of the reduction, e.g. get the sum of array 0
+'           placeholder     placeholder of the value
+'           index           placeholder of the index, starting from 0
+'           cumVal          the accumlator
+'           hasThousandSep  relevant for "." as thousand sep
+'           valIfNull       set value if the array position is null
+'''''''''''''''''''''''''''
+Private Function reduceArrayX(ByVal arr, ByVal operation As String, Optional ByVal initVal As Variant = 0, Optional ByVal placeholder As String = "{*}", Optional ByVal index As String = "{i}", Optional ByVal cumVal As String = "{v}", Optional ByVal hasThousandSep As Boolean = True, Optional ByVal valIfNull As Variant = 0) As Variant
     Dim k
     Dim v
     Dim tmp As String
     
-    
     If hasThousandSep Then
         For k = LBound(arr) To UBound(arr)
-            tmp = Replace(arr(k) & "", ",", ".")
+            tmp = Replace(ifEmpty(arr(k), valIfNull) & "", ",", ".")
             initVal = Replace(initVal & "", ",", ".")
             initVal = Application.Evaluate(Replace(Replace(Replace(operation, placeholder, tmp), index, k), cumVal, initVal))
         Next k
     Else
         For k = LBound(arr) To UBound(arr)
-            initVal = Application.Evaluate(Replace(Replace(Replace(operation, placeholder, arr(k) & ""), index, k), cumVal, initVal))
+            initVal = Application.Evaluate(Replace(Replace(Replace(operation, placeholder, ifEmpty(arr(k), valIfNull) & ""), index, k), cumVal, initVal))
         Next k
     End If
 
     reduceArrayX = initVal
-   
-
 End Function
 
 
@@ -1153,8 +1203,7 @@ Public Function filterInclude(ByVal reg As Object) As Dicts
     
     Dim k
     
-    Dim res As Dicts
-    Set res = New Dicts
+    Dim res As New Dicts
     Call res.ini
     
     For Each k In pDict.Keys
@@ -1164,7 +1213,7 @@ Public Function filterInclude(ByVal reg As Object) As Dicts
     Next k
     
     Set filterInclude = res
-    
+    Set res = Nothing
 End Function
 
 ''''''''''''''''''''
@@ -1172,23 +1221,18 @@ End Function
 'default to be 1
 ''''''''''''''''''''
 
-Public Function constDict(Optional ByVal constant As Variant) As Dicts
+Public Function constDict(Optional ByVal constant As Variant = 1) As Dicts
     Dim k
     
-    Dim res As Dicts
-    Set res = New Dicts
+    Dim res As New Dicts
     Call res.ini
-    
-    If IsMissing(constant) Then
-        constant = 1
-    End If
     
     For Each k In pDict.Keys
         res.dict(k) = constant
     Next k
     
     Set constDict = res
-
+    Set res = Nothing
 End Function
 
 
@@ -1244,8 +1288,7 @@ Public Function productX(ByVal operation As String, Optional ByVal placeholder A
     Dim k
     Dim tmp As String
     
-    Dim res As Dicts
-    Set res = New Dicts
+    Dim res As New Dicts
     Call res.ini
 
             If hasThousandSep Then
@@ -1261,11 +1304,12 @@ Public Function productX(ByVal operation As String, Optional ByVal placeholder A
         
    
     Set productX = res
-    
+    Set res = Nothing
 End Function
 
+'deep copy of this-Dicts-Object
 Public Function clone() As Dicts
-        Dim res As Dicts
+       Dim res As Dicts
        Set res = clone__(Me, pLevel)
        
        With res
@@ -1359,6 +1403,7 @@ End Function
 
 ' ______________________________ Print______________________________________________
 
+'print the key=>value pairs of this Dicts
 Public Function p()
     
     ' check if the val is array
@@ -1372,11 +1417,11 @@ Public Function p()
     
     If is_a Then
          For Each k In Me.dict.Keys
-            Debug.Print k & "  " & a_toString(Me.item(k))
+            Debug.Print k & Chr(9) & "=>" & Chr(9) & a_toString(Me.item(k))
         Next k
     Else
         For Each k In Me.dict.Keys
-            Debug.Print k & "  " & Me.item(k)
+            Debug.Print k & Chr(9) & "=>" & Chr(9) & Me.item(k)
         Next k
     End If
     
@@ -1384,6 +1429,7 @@ Public Function p()
 
 End Function
 
+' print iterables to screen
 Private Function a_toString(ByVal arr As Variant) As String
     Dim res As String
     Dim i
@@ -1444,6 +1490,8 @@ Public Function toJSON(Optional ByVal k As String = "root") As String
 End Function
 
 ' ________________________________________Util Functions____________________________________________
+
+' return the RegExp-Object
 Public Function reg(ByVal pattern As String, Optional ByVal flag As String) As Object
     Dim obj As Object
     Set obj = CreateObject("vbscript.regexp")
@@ -1465,8 +1513,10 @@ Public Function reg(ByVal pattern As String, Optional ByVal flag As String) As O
     End If
     
     Set reg = obj
+    Set obj = Nothing
 End Function
 
+' return a consective sequence of the integer numbers
 Public Function rng(ByVal start As Long, ByVal ending As Long)
     Dim res()
     ReDim res(0 To ending - start)
@@ -1595,4 +1645,3 @@ Public Function getTargetColumn(ByVal targSht As String, ByVal targCol As Long, 
     Set getTargetColumn = Worksheets(targSht).Cells(targRowBegine, targCol).Resize(targRowEnd - targRowBegine + 1, 1)
 
 End Function
-
