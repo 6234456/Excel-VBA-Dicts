@@ -1,9 +1,9 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
-'@lastUpdate                               24.12.2017
-'                                          add docs and examples
-'                                          add test cases
+'@lastUpdate                               27.12.2017
+'                                          ini can now be automatically invoked if needed.
+'@knownIssues                              by the keys there is no distinguishing between String and Number, i.e. "6" and 6 refer to the same value
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 ' declaration compulsory
@@ -35,8 +35,18 @@ Private pIsNamed As Boolean
 ' column label as Dicts
 Private pNamedArray As Dicts
 
-' get the underlying Dicitionary-Object
+' get the underlying Dicitionary-Object, if not yet initiated call ini
 Public Property Get dict() As Object
+    On Error GoTo hdd
+    
+    Dim i
+    i = pDict.Count
+    
+hdd:
+    If Err.Number <> 0 Then
+        Call Me.ini
+    End If
+    
     Set dict = pDict
 End Property
 
@@ -1094,7 +1104,7 @@ End Function
 
 Private Function ifEmpty(ByVal targetVal As Variant, ByVal valIfNull As Variant) As Variant
     
-   ifEmpty = IIf(IsEmpty(targetVal), valIfNull, targetVal)
+   ifEmpty = IIf(isEmpty(targetVal), valIfNull, targetVal)
 
 End Function
 
