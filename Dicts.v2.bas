@@ -1,9 +1,10 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
-'@lastUpdate                               27.12.2017
+'@lastUpdate                               28.12.2017
 '                                          ini can now be automatically invoked if needed.
-'@knownIssues                              by the keys there is no distinguishing between String and Number, i.e. "6" and 6 refer to the same value
+'@TODO                                     print of decimal point "," and "."
+'                                          productRngX
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 ' declaration compulsory
@@ -36,6 +37,7 @@ Private pIsNamed As Boolean
 Private pNamedArray As Dicts
 
 ' get the underlying Dicitionary-Object, if not yet initiated call ini
+' #depreicated!! - use item instead
 Public Property Get dict() As Object
     On Error GoTo hdd
     
@@ -201,7 +203,24 @@ End Sub
 
 '________________________load data from spreadsheet_____________________________
 
+' shell method for load
+Public Function l(ByVal targSht As String, ByVal targKeyCol As Long, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant, Optional ByVal ignoreNullVal As Boolean, Optional ByVal setNullValTo As Variant) As Dicts
+    Call Me.load(targSht, targKeyCol, targValCol, targRowBegine, targRowEnd, reg, ignoreNullVal, setNullValTo)
+    Set l = Me
+End Function
 
+' shell method for loadRng
+Public Function lr(ByVal targSht As String, ByVal targKeyCol As Long, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant) As Dicts
+    Call Me.loadRng(targSht, targKeyCol, targValCol, targRowBegine, targRowEnd, reg)
+    Set lr = Me
+End Function
+
+' shell method for loadAddress
+Public Function la(ByVal targSht As String, ByVal targKeyCol As Long, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant, Optional isR1C1 As Boolean = False)
+    Call Me.loadAddress(targSht, targKeyCol, targValCol, targRowBegine, targRowEnd, reg, isR1C1)
+    Set la = Me
+End Function
+ 
 ' to add the shtName just through dict.productX("""'src'!{*}""").p
 Public Sub loadAddress(ByVal targSht As String, ByVal targKeyCol As Long, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant, Optional isR1C1 As Boolean = False)
     
@@ -840,9 +859,25 @@ Public Function exists(ByVal k) As Boolean
     
 End Function
 
-Public Function item(ByVal k) As Variant
+' 1 param get the item
+' 2 params set the value to the key
+Public Function item(ByVal k, Optional v) As Variant
+    'Call Me.ini
     
-    item = pDict(Trim(CStr(k)))
+    If IsMissing(v) Then
+        If IsObject(pDict(Trim(CStr(k)))) Then
+            Set item = pDict(Trim(CStr(k)))
+        Else
+            item = pDict(Trim(CStr(k)))
+        End If
+    Else
+        Call Me.ini
+        If IsObject(v) Then
+            Set pDict(Trim(CStr(k))) = v
+        Else
+            pDict(Trim(CStr(k))) = v
+        End If
+    End If
 
 End Function
 
@@ -1415,44 +1450,55 @@ End Function
 
 'print the key=>value pairs of this Dicts
 Public Function p()
-    
-    ' check if the val is array
-    Dim is_a As Boolean
-    Dim k
-    
-    For Each k In Me.dict.Keys
-        is_a = IsArray(Me.dict(k))
-        Exit For
-    Next k
-    
-    If is_a Then
-         For Each k In Me.dict.Keys
-            Debug.Print k & Chr(9) & "=>" & Chr(9) & a_toString(Me.item(k))
-        Next k
-    Else
-        For Each k In Me.dict.Keys
-            Debug.Print k & Chr(9) & "=>" & Chr(9) & Me.item(k)
-        Next k
-    End If
-    
-   
-
+    Debug.Print Me.X_toString(Me)
 End Function
 
 ' print iterables to screen
-Private Function a_toString(ByVal arr As Variant) As String
+Private Function a_toString(ByVal arr As Variant, Optional ByVal lvl As Integer = 0) As String
     Dim res As String
     Dim i
     res = "["
     
     For Each i In arr
-        res = res & Replace(" " & i, ",", ".") & ", "
+        If Not IsNumeric(i) Then
+            res = res & X_toString(i, lvl + 1) & ", "
+        Else
+            res = res & Replace(" " & i, ",", ".") & ", "
+        End If
     Next i
     
     res = Left(res, Len(res) - 2)
     
     
     a_toString = res & " ]"
+
+End Function
+
+Private Function Dicts_toString(d As Variant, Optional ByVal lvl As Integer = 0) As String
+    Dim res As String
+    Dim k
+    res = "{" & Chr(10)
+    
+    For Each k In d.dict.Keys
+        res = res & String(lvl, Chr(9)) & k & Chr(9) & "=>" & Chr(9) & X_toString(d.item(k), lvl + 1) & "," & Chr(10)
+    Next k
+    
+    res = Left(res, Len(res) - 2)
+    
+    
+    Dicts_toString = res & Chr(10) & String(lvl, Chr(9)) & "}"
+
+End Function
+
+Public Function X_toString(x As Variant, Optional ByVal lvl As Integer = 0) As String
+        
+    If IsArray(x) Then
+        X_toString = a_toString(x, lvl)
+    ElseIf Me.isDict(x) Then
+        X_toString = Dicts_toString(x, lvl)
+    Else
+        X_toString = CStr(x)
+    End If
 
 End Function
 
@@ -1632,6 +1678,25 @@ errhandler3:
         IsReg = True
     Else
         IsReg = False
+    End If
+
+End Function
+
+Public Function ClassHashID() As String
+    ClassHashID = "#Dicts_W3I89DWX897HH7NC9"
+End Function
+
+Public Function isDict(o As Variant) As Boolean
+    On Error GoTo errhandler_d
+    
+    Dim a As Boolean
+    a = (o.ClassHashID = "#Dicts_W3I89DWX897HH7NC9")
+    
+errhandler_d:
+    If Err.Number = 0 Then
+        isDict = a
+    Else
+        isDict = False
     End If
 
 End Function
