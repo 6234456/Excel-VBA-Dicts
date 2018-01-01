@@ -5,6 +5,7 @@
 '                                          ini can now be automatically invoked if needed.
 '@TODO                                     print of decimal point "," and "."
 '                                          productRngX
+'                                          set appendMode to be default
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 ' declaration compulsory
@@ -1475,18 +1476,27 @@ Private Function a_toString(ByVal arr As Variant, Optional ByVal lvl As Integer 
 End Function
 
 Private Function Dicts_toString(d As Variant, Optional ByVal lvl As Integer = 0) As String
-    Dim res As String
-    Dim k
-    res = "{" & Chr(10)
+
+    If d.Count = 0 Then
+        
+        Dicts_toString = "{}"
+        
+    Else
     
-    For Each k In d.dict.Keys
-        res = res & String(lvl, Chr(9)) & k & Chr(9) & "=>" & Chr(9) & X_toString(d.item(k), lvl + 1) & "," & Chr(10)
-    Next k
+        Dim res As String
+        Dim k
+        res = "{" & Chr(10)
+        
+        For Each k In d.dict.Keys
+            res = res & String(lvl, Chr(9)) & k & Chr(9) & "=>" & Chr(9) & X_toString(d.item(k), lvl + 1) & "," & Chr(10)
+        Next k
+        
+        res = Left(res, Len(res) - 2)
+        
+        
+        Dicts_toString = res & Chr(10) & String(lvl, Chr(9)) & "}"
     
-    res = Left(res, Len(res) - 2)
-    
-    
-    Dicts_toString = res & Chr(10) & String(lvl, Chr(9)) & "}"
+    End If
 
 End Function
 
@@ -1719,4 +1729,47 @@ Public Function getTargetColumn(ByVal targSht As String, ByVal targCol As Long, 
     
     Set getTargetColumn = Worksheets(targSht).Cells(targRowBegine, targCol).Resize(targRowEnd - targRowBegine + 1, 1)
 
+End Function
+
+Public Function getKeyColumn(ByVal targSht As String, ByVal targKeyCol As Long, ByVal targValCol As Long, Optional ByVal targRowBegine, Optional ByVal targRowEnd) As Range
+   
+   Set getKeyColumn = getTargetColumn(targSht, targValCol, targRowBegine, targRowEnd).Offset(0, targKeyCol - targValCol)
+   
+End Function
+
+Public Function loadSumDict(ByVal targSht As String, ByVal targKeyCol As Long, ByVal targValCol As Long, Optional ByVal targRowBegine, Optional ByVal targRowEnd) As Dicts
+    Dim res As New Dicts
+    Call res.ini
+    
+    Dim cnt As Long
+    Dim keyRng As Range
+    Dim valRng As Range
+    Dim i
+    
+    Set keyRng = getKeyColumn(targSht, targKeyCol, targValCol, targRowBegine, targRowEnd)
+    Set valRng = getTargetColumn(targSht, targValCol, targRowBegine, targRowEnd)
+    
+    For i = 1 To keyRng.Cells.Count
+        If Not isEmptyRng(keyRng(i)) And Not isEmptyRng(valRng(i)) Then
+            If res.exists(keyRng(i)) Then
+                res.item keyRng(i), res.item(keyRng(i)) + valRng(i)
+            Else
+                res.item keyRng(i), valRng(i)
+            End If
+        End If
+    Next i
+    
+    Set keyRng = Nothing
+    Set valRng = Nothing
+    
+    Set loadSumDict = res
+    
+    Set pDict = res.dict
+    
+    Set res = Nothing
+    
+End Function
+
+Private Function isEmptyRng(ByRef rng As Range) As Boolean
+    isEmptyRng = Len(Trim(rng.Text)) = 0
 End Function
