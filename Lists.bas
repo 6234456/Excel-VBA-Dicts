@@ -37,13 +37,13 @@ Private Sub override(ByRef list As Lists)
     pMaxLen = UBound(pArr) + 1
 End Sub
 
-Public Function isEmpty() As Boolean
+Public Function isEmptyList() As Boolean
     
-    isEmpty = (pLen = 0)
+    isEmptyList = (pLen = 0)
 
 End Function
 
-Private Function isInstance(ByVal obj, ByVal sign) As Boolean
+Private Function isInstance(obj, ByVal sign) As Boolean
     On Error GoTo listhandler
     
     Dim res As Boolean
@@ -85,23 +85,32 @@ listhandler:
 
 End Function
 
+'in case of 1 * N or N * 1 matrix, return 1-dimensional array
+
 Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String = "v") As Lists
     Dim res As New Lists
     res.init
     
     Dim rowNum As Integer
     rowNum = rng.Rows.Count
+    Dim colNum As Integer
+    colNum = rng.Columns.Count
     
     Dim i
     
-    If rowNum = 1 Then
-        res.addAll rng.value
+    If rowNum = 1 Or colNum = 1 Then
+        res.addAll rng.Value
     Else
         Dim tmp As New Lists
         
         For i = 1 To rowNum
             tmp.init
-            tmp.addAll rng.Rows(i).value
+            If IsArray(rng.Rows(i).Value) Then
+                tmp.add rng.Rows(i).Value
+            Else
+                tmp.addAll rng.Rows(i).Value
+            End If
+            
             res.add tmp
             Set tmp = Nothing
         Next i
@@ -118,36 +127,38 @@ End Function
 
 Public Function toRng(ByRef rng As Range)
     
-    Dim y
-    y = pLen
-    
-    If y = 1 Then
-        rng.Resize(1, pArr(0).length).value = Me.toArray
-    Else
-        Dim lenArr As New Lists
-        lenArr.init
+    If Me.length > 0 Then
+        Dim y
+        y = pLen
         
-        Dim i
-        For i = 0 To pLen - 1
-            If isInstance(pArr(i), "Lists") Then
-                lenArr.add pArr(i).length
-            Else
-                lenArr.add 1
-            End If
-        Next i
-        
-        Dim maxLen As Integer
-        maxLen = lenArr.max
-        
-        rng.Resize(1, maxLen).Cells.Clear
-        
-        For i = 0 To pLen - 1
-            If isInstance(pArr(i), "Lists") Then
-                rng.Offset(i, 0).Resize(1, pArr(i).length).value = pArr(i).toArray
-            Else
-                rng.Offset(i, 0).value = pArr(i)
-            End If
-        Next i
+        If y = 1 Then
+            rng.Resize(1, pArr(0).length).Value = Me.toArray
+        Else
+            Dim lenArr As New Lists
+            lenArr.init
+            
+            Dim i
+            For i = 0 To pLen - 1
+                If isInstance(pArr(i), "Lists") Then
+                    lenArr.add pArr(i).length
+                Else
+                    lenArr.add 1
+                End If
+            Next i
+            
+            Dim maxLen As Integer
+            maxLen = lenArr.max
+            
+            rng.Resize(1, maxLen).Cells.clear
+            
+            For i = 0 To pLen - 1
+                If isInstance(pArr(i), "Lists") Then
+                    rng.Offset(i, 0).Resize(1, pArr(i).length).Value = pArr(i).toArray
+                Else
+                    rng.Offset(i, 0).Value = pArr(i)
+                End If
+            Next i
+        End If
     End If
     
 End Function
@@ -216,10 +227,12 @@ Public Function addAll(ByVal arr) As Lists
         For Each i In arr.toArray
             Me.add i
         Next i
-    Else
+    ElseIf IsArray(arr) Then
         For Each i In arr
             Me.add i
         Next i
+    Else
+        Me.add arr
     End If
     
     Set addAll = Me
@@ -466,22 +479,29 @@ End Function
 ''''''''''''
 '@param     operation:              string to be evaluated, e.g. _*2 will be interpreated as ele * 2
 '           placeholder:            placeholder to be replaced by the value
+'           idx:                    index of the element
 '           replaceDecimalPoint:    whether the Germany Decimal Point should be replace by "."
 ''''''''''''
-Public Function map(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal replaceDecimalPoint As Boolean = True) As Lists
+Public Function map(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0) As Lists
     
     Dim res As New Lists
     res.init
     
     Dim i
+    Dim cnt As Long
+    cnt = 0
     
     If replaceDecimalPoint Then
         For Each i In Me.toArray
-            res.add (Application.Evaluate(Replace(operation, placeholder, Replace("" & i, ",", "."))))
+            i = IIf(isEmpty(i), setNullValTo, i)
+            res.add (Application.Evaluate(Replace(Replace(operation, placeholder, Replace("" & i, ",", ".")), idx, cnt & "")))
+            cnt = cnt + 1
         Next i
     Else
         For Each i In Me.toArray
-            res.add (Application.Evaluate(Replace(operation, placeholder, "" & i)))
+            i = IIf(isEmpty(i), setNullValTo, i)
+            res.add (Application.Evaluate(Replace(Replace(operation, placeholder, "" & i), idx, cnt & "")))
+            cnt = cnt + 1
         Next i
     End If
     
@@ -507,7 +527,7 @@ Public Function mapList(ByVal operation As String, Optional ByVal replaceDecimal
     
     With re
         .Global = True
-        .Pattern = "#(\d+)(\D|\b)"
+        .pattern = "#(\d+)(\D|\b)"
     End With
     
     For Each i In re.Execute(operation)
@@ -542,7 +562,7 @@ End Function
 '           placeholder:            placeholder to be replaced by the value
 '           replaceDecimalPoint:    whether the Germany Decimal Point should be replace by "."
 ''''''''''''
-Public Function filter(ByVal judgement As String, Optional ByVal placeholder As String = "_", Optional ByVal replaceDecimalPoint As Boolean = True) As Lists
+Public Function filter(ByVal judgement As String, Optional ByVal placeholder As String = "_", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0) As Lists
     Dim res As New Lists
     res.init
     
@@ -550,12 +570,14 @@ Public Function filter(ByVal judgement As String, Optional ByVal placeholder As 
     
     If replaceDecimalPoint Then
         For Each i In Me.toArray
+            i = IIf(isEmpty(i), setNullValTo, i)
             If Application.Evaluate(Replace(judgement, placeholder, Replace("" & i, ",", "."))) Then
                 res.add i
             End If
         Next i
     Else
         For Each i In Me.toArray
+            i = IIf(isEmpty(i), setNullValTo, i)
             If Application.Evaluate(Replace(judgement, placeholder, "" & i)) Then
                 res.add i
             End If
@@ -565,6 +587,49 @@ Public Function filter(ByVal judgement As String, Optional ByVal placeholder As 
     Set filter = res
 End Function
 
+Public Function filterWith(arr As Variant) As Lists
+    Dim i
+    Dim cnt As Long
+    cnt = 0
+    
+    Dim res As New Lists
+    res.init
+
+    For Each i In xToArray(arr)
+        If i Then
+            res.add Me.getVal(cnt)
+        End If
+        
+        cnt = cnt + 1
+        If cnt = Me.length Then
+            Exit For
+        End If
+    Next i
+    
+    Set filterWith = res
+End Function
+
+Public Function nullVal(Optional setValTo As Variant) As Lists
+    Dim res As New Lists
+    res.init
+    
+    Dim i
+    
+    'setValTo missing, left out empty value
+    If IsMissing(setValTo) Then
+        For Each i In Me.toArray
+            If Not isEmpty(i) Then
+                res.add i
+            End If
+        Next i
+    Else
+        For Each i In Me.toArray
+            res.add IIf(isEmpty(i), setValTo, i)
+        Next i
+    End If
+
+    Set nullVal = res
+End Function
 
 Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True) As Variant
     Dim res
@@ -606,8 +671,6 @@ Public Function product(ByVal operation As String, ByRef list2 As Lists, Optiona
     
      Set product = res
 End Function
-
-
 
 Public Function slice(Optional ByVal fromIndex, Optional ByVal toIndex, Optional ByVal step) As Lists
 
@@ -651,6 +714,16 @@ Public Function slice(Optional ByVal fromIndex, Optional ByVal toIndex, Optional
     Set slice = res
 End Function
 
+Private Function xToArray(x As Variant) As Variant
+    If IsArray(x) Then
+        xToArray = x
+    ElseIf isInstance(x, "Lists") Then
+        xToArray = x.toArray
+    Else
+        xToArray = Array(x)
+    End If
+End Function
+
 Public Function toArray() As Variant
     Dim arr()
     
@@ -675,7 +748,6 @@ Public Function toArray() As Variant
 
 End Function
 
-
 Public Function toString()
 
     If pLen = 0 Then
@@ -688,14 +760,18 @@ Public Function toString()
 
        
         For i = 0 To pLen - 1
-            If Not isObj(pArr(i)) Then
+            If IsArray(pArr(i)) Then
+                Dim t As New Lists
+                t.init
+                res = t.addAll(pArr(i)).toString
+            ElseIf Not isObj(pArr(i)) Then
                 res = res & pArr(i) & ", "
             Else
                 res = res & pArr(i).toString() & ", "
             End If
         Next i
 
-        toString = left(res, Len(res) - 2) & "]"
+        toString = Left(res, Len(res) - 2) & "]"
     End If
    
 End Function
