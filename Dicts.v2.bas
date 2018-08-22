@@ -1,12 +1,12 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
-'@lastUpdate                               20.08.2018
+'@lastUpdate                               22.08.2018
 '                                          code refactor
 '                                          add workbook namespace
-'@TODO                                     print of decimal point "," and "."
-'                                          productRngX
-'                                          set appendMode to be default
+'@TODO                                     optional params
+'
+'
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 ' declaration compulsory
@@ -34,7 +34,7 @@ Private pLevel As Long
 ' has column label
 Private pIsNamed As Boolean
 
-' column label as Dicts
+' column label as Dicts, label -> index
 Private pNamedArray As Dicts
 
 ' target workbook
@@ -46,14 +46,14 @@ Private Sub Class_Initialize()
     Set pWb = ThisWorkbook
 End Sub
 
-Public Property Get Wb() As Workbook
+Public Property Get wb() As Workbook
 
-    Set Wb = pWb
+    Set wb = pWb
     
 End Property
 
 ' set target workbook
-Public Property Let Wb(ByRef wkb As Workbook)
+Public Property Let wb(ByRef wkb As Workbook)
    Set pWb = wkb
 End Property
 
@@ -223,11 +223,17 @@ Errhandler1:
     End If
 End Sub
 
-'load the content of single column
+'''''''''''''''''''''''''''
+'@desc:     get Worksheet
+'@return:   the target sht
+'@param:    targSht         sheet name in string, by default the activesheet
+'''''''''''''''''''''''''''
 
-Private Function getColumnRange(Optional ByVal targSht As String = "", Optional ByVal targKeyCol As Long = 1, Optional ByVal targValCol As Long, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant) As Range
+Function getTargetSht(Optional ByVal targSht As String = "", Optional ByRef wb As Workbook) As Worksheet
+    Dim tmpWb As Workbook
+    Set tmpWb = IIf(wb Is Nothing, pWb, wb)
     
-    With pWb
+    With tmpWb
         Dim tmpname As String
         
         tmpname = ActiveSheet.Name
@@ -235,27 +241,46 @@ Private Function getColumnRange(Optional ByVal targSht As String = "", Optional 
             targSht = tmpname
         End If
         
-        With .Worksheets(targSht)
-        
-            If IsMissing(targValCol) Then
-                targValCol = targKeyCol
-            End If
-        
-            If IsMissing(targRowBegine) Then
-                targRowBegine = 1
-            End If
-            
-            If IsMissing(targRowEnd) Then
-                targRowEnd = .Cells(Rows.Count, targKeyCol).End(xlUp).row
-            End If
-            
-            Set getColumnRange = .Range(Cells(targRowBegine, targValCol), Cells(targRowEnd, targValCol))
-        End With
+       Set getTargetSht = .Worksheets(targSht)
     End With
     
+    Set tmpWb = Nothing
+End Function
+    
+
+'''''''''''''''''''''''''''
+'@desc:     load the content of range
+'@return:   the target range
+'@param:    targSht         sheet name in string, by default the activesheet
+'           targKeyCol      target key column, default to be 1
+'           targValCol      target value column, the column to be read from, default to be the key column
+'           targRowBegine   row number to begin
+'           targRowEnd      row number ends, by default the last none-empty row of key column
+'''''''''''''''''''''''''''
+
+Function getRange(Optional ByVal targSht As String = "", Optional ByVal targKeyCol As Long = 1, Optional ByVal targValCol = 1, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByRef wb As Workbook) As Range
+    
+    If Not IsArray(targValCol) Then
+        targValCol = Array(targValCol)
+    End If
+    
+    With getTargetSht(targSht, wb)
+    
+        If IsMissing(targRowBegine) Then
+            targRowBegine = 1
+        End If
+        
+        If IsMissing(targRowEnd) Then
+            targRowEnd = .Cells(Rows.Count, targKeyCol).End(xlUp).row
+        End If
+        
+        Set getRange = .Range(Cells(targRowBegine, targValCol(LBound(targValCol))), Cells(targRowEnd, targValCol(UBound(targValCol))))
+    End With
+        
 End Function
 
-Public Function rngToArr(ByRef rng As Range, Optional ByVal isVertical As Boolean = True) As Variant
+
+Public Function rngToArr(ByRef rng As Range, Optional ByVal isVertical As Boolean = True, Optional ByVal asAddress As Boolean = False) As Variant
     Dim i
     Dim res()
     Dim cnt As Long
@@ -264,9 +289,13 @@ Public Function rngToArr(ByRef rng As Range, Optional ByVal isVertical As Boolea
     
     If rng.Cells.Count = 1 Then
         ReDim arr(1 To 1, 1 To 1)
-        arr(1, 1) = rng.Value
+        arr(1, 1) = IIf(asAddress, rng.Address, rng.Value)
     Else
-        arr = rng.Value
+        If asAddress Then
+            arr = rngToAddress(rng)
+        Else
+            arr = rng.Value
+        End If
     End If
     
     If isVertical Then
@@ -290,11 +319,37 @@ Public Function rngToArr(ByRef rng As Range, Optional ByVal isVertical As Boolea
         rngToArr = res
     End If
     
-    
-    
 End Function
 
-Public Function sliceArr(arr, ByVal n As Long, Optional ByVal isVertical As Boolean = True) As Variant
+Public Function rngToAddress(ByRef rng As Range) As Variant
+    
+    Dim fst As Range
+    Set fst = rng.Cells(1, 1)
+    
+    Dim lst As Range
+    Set lst = fst.Offset(rng.Rows.Count - 1, rng.Columns.Count - 1)
+    
+    Debug.Print lst.Address
+    Debug.Print fst.Address
+    
+    
+    Dim i As Long
+    Dim j As Long
+    
+    Dim res()
+    ReDim res(1 To rng.Rows.Count, 1 To rng.Columns.Count)
+   
+    For i = fst.row To lst.row
+        For j = fst.Column To lst.Column
+            res(i - fst.row + 1, j - fst.Column + 1) = Cells(i, j).Address
+        Next j
+    Next i
+    
+    rngToAddress = res
+
+End Function
+
+Private Function sliceArr(arr, ByVal n As Long, Optional ByVal isVertical As Boolean = True) As Variant
     
     Dim i
     Dim res
@@ -348,8 +403,44 @@ hdl:
 End Function
 
 
+Private Function arrLen(arr) As Long
+    
+    arrLen = UBound(arr) - LBound(arr) + 1
 
+End Function
 
+Function arrToDict(keyArr, valArr, Optional ByVal isReversed As Boolean = False, Optional ByVal keyCstr As Boolean = True) As Object
+    
+    If arrLen(keyArr) <> arrLen(valArr) Then
+        Err.Raise 8888, "", "Arrays with different length can not be combined"
+    End If
+    
+    Dim res As Object
+    Set res = CreateObject("scripting.dictionary")
+    res.compareMode = vbTextCompare
+    
+    Dim i
+    
+    If isReversed Then
+        For i = UBound(keyArr) To LBound(keyArr) Step -1
+            res(IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i))) = valArr(UBound(valArr) + i - UBound(keyArr))
+        Next i
+    Else
+        For i = LBound(keyArr) To UBound(keyArr)
+            res(IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i))) = valArr(LBound(valArr) + i - LBound(keyArr))
+        Next i
+    End If
+    
+    Set arrToDict = res
+    
+End Function
+
+Function rngToDict(ByRef keyRng As Range, ByRef valRng As Range, Optional ByVal isReversed As Boolean = False, Optional ByVal asAddress As Boolean = False) As Object
+    Dim isVertical As Boolean
+    isVertical = keyRng.Columns.Count = 1
+    
+    Set rngToDict = arrToDict(rngToArr(keyRng, Not isVertical), IIf(IIf(isVertical, valRng.Columns.Count, valRng.Rows.Count) = 1, rngToArr(valRng, Not isVertical, asAddress), rngToArr(valRng, isVertical, asAddress)), isReversed)
+End Function
 
 
 ' shell method for load
@@ -1048,6 +1139,21 @@ Public Function getNamedVal(ByVal nm As String) As Dicts
         Set getNamedVal = Nothing
     End If
    
+End Function
+
+
+Public Function sliceWithName(ByVal nm As String) As Dicts
+    
+    If pIsNamed Then
+        
+        Dim i As Long
+        i = pNamedArray.item(nm)
+        
+        Set sliceWithName = Me.filterRngX("{i}=" & i)
+        
+    Else
+        Set sliceWithName = Nothing
+    End If
 
 End Function
 
@@ -1239,6 +1345,27 @@ Public Function reduceRngX(ByVal operation As String, Optional ByVal initVal As 
     Set res = Nothing
 End Function
 
+
+Public Function filterRngX(ByVal operation As String, Optional ByVal placeholder As String = "{*}", Optional ByVal index As String = "{i}", Optional ByVal hasThousandSep As Boolean = True, Optional ByVal valIfNull As Variant = 0) As Dicts
+    Dim res As Dicts
+    Set res = New Dicts
+    Call res.ini
+    
+    Dim l As New Lists
+
+    Dim k
+
+    For Each k In pDict.Keys
+        res.dict(k) = l.addAll(pDict(k)).filter(operation, placeholder, index, hasThousandSep, valIfNull).toArray
+        l.clear
+    Next k
+   
+    
+    Set filterRngX = res
+    Set res = Nothing
+    Set l = Nothing
+End Function
+
 Public Function reduceRngVertical(ByVal sign As String) As Variant
     Dim k
     Dim i
@@ -1374,6 +1501,7 @@ Public Function filterVal(ByVal operation As String, Optional ByVal placeholder 
     Set filterVal = res
     
 End Function
+
 
 Public Function filterExclude(ByVal reg As Object) As Dicts
     
@@ -1731,40 +1859,47 @@ Public Function reg(ByVal pattern As String, Optional ByVal flag As String) As O
 End Function
 
 ' return a consective sequence of the integer numbers
-Public Function rng(ByVal start As Long, ByVal ending As Long)
+Public Function rng(ByVal start As Long, ByVal ending As Long, Optional ByVal steps As Long = 1)
     Dim res()
-    ReDim res(0 To ending - start)
-    
+    Dim cnt As Long
+    cnt = -1
     Dim i As Long
-    For i = start To ending
+    
+    For i = start To ending Step steps
+        cnt = cnt + 1
+    Next i
+    
+    ReDim res(0 To cnt)
+    
+    For i = start To ending Step steps
         res(i - start) = i
     Next i
     
     rng = res
 End Function
 
-Public Function y(Optional ByVal sht As String = "", Optional ByVal col As Long = 1, Optional ByVal Wb As String = "") As Long
+Public Function y(Optional ByVal sht As String = "", Optional ByVal col As Long = 1, Optional ByVal wb As String = "") As Long
     
-    y = getTargetWorksheet(sht, Wb).Cells(Rows.Count, col).End(xlUp).row
-    
-End Function
-
-Public Function x(Optional ByVal sht As String = "", Optional ByVal row As Long = 1, Optional ByVal Wb As String = "") As Long
-    
-    x = getTargetWorksheet(sht, Wb).Cells(row, Columns.Count).End(xlToLeft).Column
+    y = getTargetWorksheet(sht, wb).Cells(Rows.Count, col).End(xlUp).row
     
 End Function
 
-Private Function getTargetWorksheet(Optional ByVal sht As String = "", Optional ByVal Wb As String = "") As Worksheet
+Public Function x(Optional ByVal sht As String = "", Optional ByVal row As Long = 1, Optional ByVal wb As String = "") As Long
+    
+    x = getTargetWorksheet(sht, wb).Cells(row, Columns.Count).End(xlToLeft).Column
+    
+End Function
+
+Private Function getTargetWorksheet(Optional ByVal sht As String = "", Optional ByVal wb As String = "") As Worksheet
     Dim shtObj As Worksheet
 
     If sht = "" Then
         Set shtObj = ActiveSheet
     Else
-        If Wb = "" Then
+        If wb = "" Then
             Set shtObj = Worksheets(sht)
         Else
-            Set shtObj = Workbooks(Wb).Worksheets(sht)
+            Set shtObj = Workbooks(wb).Worksheets(sht)
         End If
     End If
     
