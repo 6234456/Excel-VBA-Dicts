@@ -23,6 +23,14 @@ Public Function init() As Lists
     Set init = Me
 End Function
 
+Public Function clear() As Lists
+    Me.init
+End Function
+
+Private Sub Class_Initialize()
+    Me.init
+End Sub
+
 Private Sub check()
     If pLen > pMaxLen * 0.75 Then
         pMaxLen = Int(pMaxLen * 1.5)
@@ -493,13 +501,13 @@ Public Function map(ByVal operation As String, Optional ByVal placeholder As Str
     
     If replaceDecimalPoint Then
         For Each i In Me.toArray
-            i = IIf(isEmpty(i), setNullValTo, i)
+            i = IIf(IsEmpty(i), setNullValTo, i)
             res.add (Application.Evaluate(Replace(Replace(operation, placeholder, Replace("" & i, ",", ".")), idx, cnt & "")))
             cnt = cnt + 1
         Next i
     Else
         For Each i In Me.toArray
-            i = IIf(isEmpty(i), setNullValTo, i)
+            i = IIf(IsEmpty(i), setNullValTo, i)
             res.add (Application.Evaluate(Replace(Replace(operation, placeholder, "" & i), idx, cnt & "")))
             cnt = cnt + 1
         Next i
@@ -562,25 +570,31 @@ End Function
 '           placeholder:            placeholder to be replaced by the value
 '           replaceDecimalPoint:    whether the Germany Decimal Point should be replace by "."
 ''''''''''''
-Public Function filter(ByVal judgement As String, Optional ByVal placeholder As String = "_", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0) As Lists
+Public Function filter(ByVal judgement As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0) As Lists
     Dim res As New Lists
     res.init
     
     Dim i
+    Dim cnt As Long
+    cnt = 0
     
     If replaceDecimalPoint Then
         For Each i In Me.toArray
-            i = IIf(isEmpty(i), setNullValTo, i)
-            If Application.Evaluate(Replace(judgement, placeholder, Replace("" & i, ",", "."))) Then
+            i = IIf(IsEmpty(i), setNullValTo, i)
+            If Application.Evaluate(Replace(Replace(judgement, placeholder, Replace("" & i, ",", ".")), idx, cnt)) Then
                 res.add i
             End If
+            
+            cnt = cnt + 1
         Next i
     Else
         For Each i In Me.toArray
-            i = IIf(isEmpty(i), setNullValTo, i)
-            If Application.Evaluate(Replace(judgement, placeholder, "" & i)) Then
+            i = IIf(IsEmpty(i), setNullValTo, i)
+            If Application.Evaluate(Replace(Replace(judgement, placeholder, "" & i), idx, cnt)) Then
                 res.add i
             End If
+            
+            cnt = cnt + 1
         Next i
     End If
     
@@ -618,13 +632,13 @@ Public Function nullVal(Optional setValTo As Variant) As Lists
     'setValTo missing, left out empty value
     If IsMissing(setValTo) Then
         For Each i In Me.toArray
-            If Not isEmpty(i) Then
+            If Not IsEmpty(i) Then
                 res.add i
             End If
         Next i
     Else
         For Each i In Me.toArray
-            res.add IIf(isEmpty(i), setValTo, i)
+            res.add IIf(IsEmpty(i), setValTo, i)
         Next i
     End If
 
@@ -852,3 +866,5 @@ Private Sub QuickSort(vArray As Variant, ByVal inLow As Integer, ByVal inHi As I
   If (tmpLow < inHi) Then QuickSort vArray, tmpLow, inHi
 
 End Sub
+
+
