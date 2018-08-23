@@ -97,7 +97,7 @@ End Function
 
 Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String = "v") As Lists
     Dim res As New Lists
-    res.init
+    
     
     Dim rowNum As Integer
     rowNum = rng.Rows.Count
@@ -171,6 +171,44 @@ Public Function toRng(ByRef rng As Range)
     
 End Function
 
+Private Function fromSerial(ByVal start As Long, ByVal ending As Long, Optional ByVal steps As Long = 1) As Variant
+    Dim res()
+    Dim cnt As Long
+    cnt = -1
+    Dim i As Long
+    
+    For i = start To ending Step steps
+        cnt = cnt + 1
+    Next i
+    
+    If cnt > -1 Then
+        ReDim res(0 To cnt)
+        
+        Dim cnt1 As Long
+        cnt1 = 0
+        
+        For i = start To ending Step steps
+            res(cnt1) = i
+            cnt1 = cnt1 + 1
+        Next i
+    End If
+    
+    fromSerial = res
+End Function
+
+Public Function serial(ByVal start As Long, ByVal ending As Long, Optional ByVal steps As Long = 1) As Lists
+    
+    Me.clear
+    
+    Set serial = Me.addAll(fromSerial(start, ending, steps))
+End Function
+
+Public Function ones(ByVal n As Long) As Lists
+    
+    Set ones = Me.serial(1, n).map("_/({i}+1)")
+    
+End Function
+
 Public Function add(ByVal ele) As Lists
    
     Call check
@@ -197,7 +235,7 @@ End Function
 Public Function removeAt(ByVal index As Integer) As Lists
     
     Dim res As New Lists
-    res.init
+    
     
     Set res = Me.slice(, index).addList(Me.slice(index + 1))
     Call override(res)
@@ -236,14 +274,38 @@ Public Function addAll(ByVal arr) As Lists
             Me.add i
         Next i
     ElseIf IsArray(arr) Then
-        For Each i In arr
-            Me.add i
-        Next i
+        If Not isArrayEmpty(arr) Then
+            For Each i In arr
+                Me.add i
+            Next i
+        End If
     Else
         Me.add arr
     End If
     
     Set addAll = Me
+End Function
+
+Private Function isArrayEmpty(arr) As Boolean
+    
+    On Error GoTo hdl
+    
+    Dim res  As Boolean
+    res = True
+    
+    Dim tmp
+    
+    If IsArray(arr) Then
+        tmp = arr(LBound(arr))
+    End If
+    
+hdl:
+    If Err.Number = 0 Then
+        res = False
+    End If
+    
+    isArrayEmpty = res
+
 End Function
 
 Public Function addList(ByRef l As Lists) As Lists
@@ -256,7 +318,7 @@ End Function
 
 Public Function zip(ParamArray l() As Variant) As Lists
     Dim res As New Lists
-    res.init
+    
     
     Dim targLen As Integer  ' the length of res
     targLen = pLen
@@ -296,7 +358,7 @@ Public Function zipMe() As Lists
         Dim i
         Dim j
         Dim res As New Lists
-        res.init
+        
         
         Dim lenArr As New Lists
         lenArr.init
@@ -430,25 +492,32 @@ Public Function subList(ByVal fromIndex As Integer, ByVal toIndex As Integer) As
     Set subList = Me.slice(fromIndex, toIndex, 1)
 End Function
 
-Public Function every(ByVal judgement As String, Optional ByVal placeholder As String = "_", Optional ByVal replaceDecimalPoint As Boolean = True) As Boolean
+Public Function every(ByVal judgement As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True) As Boolean
     Dim res As Boolean
     res = True
     
     Dim i
     
+    Dim cnt As Long
+    cnt = 0
+    
     If replaceDecimalPoint Then
         For Each i In Me.toArray
-            If Not Application.Evaluate(Replace(judgement, placeholder, Replace("" & i, ",", "."))) Then
+            If Not Application.Evaluate(Replace(Replace(judgement, placeholder, Replace("" & i, ",", ".")), idx, cnt)) Then
                 res = False
                 Exit For
             End If
+            
+            cnt = cnt + 1
         Next i
     Else
         For Each i In Me.toArray
-            If Not Application.Evaluate(Replace(judgement, placeholder, "" & i)) Then
+            If Not Application.Evaluate(Replace(Replace(judgement, placeholder, "" & i), idx, cnt)) Then
                 res = False
                 Exit For
             End If
+            
+            cnt = cnt + 1
         Next i
     End If
     
@@ -456,26 +525,33 @@ Public Function every(ByVal judgement As String, Optional ByVal placeholder As S
 
 End Function
 
-Public Function some(ByVal judgement As String, Optional ByVal placeholder As String = "_", Optional ByVal replaceDecimalPoint As Boolean = True) As Boolean
+Public Function some(ByVal judgement As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True) As Boolean
     Dim res As Boolean
     res = False
     
     Dim i
     
+    Dim cnt As Long
+    cnt = 0
+    
     If replaceDecimalPoint Then
         For Each i In Me.toArray
-            If Application.Evaluate(Replace(judgement, placeholder, Replace("" & i, ",", "."))) Then
+            If Application.Evaluate(Replace(Replace(judgement, placeholder, Replace("" & i, ",", ".")), idx, cnt)) Then
                 res = True
                 Exit For
             End If
+            
+            cnt = cnt + 1
         Next i
     Else
         For Each i In Me.toArray
-            If Application.Evaluate(Replace(judgement, placeholder, "" & i)) Then
+            If Application.Evaluate(Replace(Replace(judgement, placeholder, "" & i), idx, cnt)) Then
                 res = True
                 Exit For
             End If
         Next i
+        
+        cnt = cnt + 1
     End If
     
     some = res
@@ -493,7 +569,7 @@ End Function
 Public Function map(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0) As Lists
     
     Dim res As New Lists
-    res.init
+    
     
     Dim i
     Dim cnt As Long
@@ -522,7 +598,7 @@ Public Function mapList(ByVal operation As String, Optional ByVal replaceDecimal
     tmpStr = operation
     
     Dim res As New Lists
-    res.init
+    
     
     Dim idx As New Lists
     idx.init
@@ -572,7 +648,7 @@ End Function
 ''''''''''''
 Public Function filter(ByVal judgement As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0) As Lists
     Dim res As New Lists
-    res.init
+    
     
     Dim i
     Dim cnt As Long
@@ -601,13 +677,22 @@ Public Function filter(ByVal judgement As String, Optional ByVal placeholder As 
     Set filter = res
 End Function
 
+
+Public Function take(ByVal n As Long) As Lists
+    Set take = Me.filter("{i}<" & n)
+End Function
+
+Public Function drop(ByVal n As Long) As Lists
+    Set drop = Me.filter("{i}>=" & n)
+End Function
+
 Public Function filterWith(arr As Variant) As Lists
     Dim i
     Dim cnt As Long
     cnt = 0
     
     Dim res As New Lists
-    res.init
+    
 
     For Each i In xToArray(arr)
         If i Then
@@ -625,7 +710,7 @@ End Function
 
 Public Function nullVal(Optional setValTo As Variant) As Lists
     Dim res As New Lists
-    res.init
+    
     
     Dim i
     
@@ -645,41 +730,55 @@ Public Function nullVal(Optional setValTo As Variant) As Lists
     Set nullVal = res
 End Function
 
-Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True) As Variant
+Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True) As Variant
     Dim res
     Dim i
     
     res = initialVal
     
+    Dim cnt As Long
+    cnt = 0
+    
     If replaceDecimalPoint Then
         For Each i In Me.toArray
-            res = Application.Evaluate(Replace(Replace(operation, placeholder, Replace("" & i, ",", ".")), placeholderInitialVal, Replace("" & res, ",", ".")))
+            res = Application.Evaluate(Replace(Replace(Replace(operation, placeholder, Replace("" & i, ",", ".")), placeholderInitialVal, Replace("" & res, ",", ".")), idx, cnt))
+            cnt = cnt + 1
         Next i
     Else
         For Each i In Me.toArray
-            res = Application.Evaluate(Replace(Replace(operation, placeholder, "" & i), placeholderInitialVal, "" & res))
+            res = Application.Evaluate(Replace(Replace(Replace(operation, placeholder, "" & i), placeholderInitialVal, "" & res), idx, cnt))
+            cnt = cnt + 1
         Next i
     End If
     
      reduce = res
 End Function
 
-Public Function product(ByVal operation As String, ByRef list2 As Lists, Optional ByVal placeholder As String = "_", Optional ByVal placeholderOther As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True) As Lists
+Public Function reduceRight(ByVal operation As String, ByVal initialVal As Variant, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True) As Variant
+     reduceRight = Me.reverse().reduce(operation, initialVal, placeholder, placeholderInitialVal, idx, replaceDecimalPoint)
+End Function
+
+Public Function product(ByVal operation As String, ByRef list2 As Lists, Optional ByVal placeholder As String = "_", Optional ByVal placeholderOther As String = "?", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True) As Lists
     Dim res As New Lists
-    res.init
+    
     
     Dim i As Integer
+    
+    Dim cnt As Long
+    cnt = 0
     
     Dim targLen As Integer
     targLen = Application.WorksheetFunction.min(pLen, list2.length) - 1
     
     If replaceDecimalPoint Then
         For i = 0 To targLen
-            res.add Application.Evaluate(Replace(Replace(operation, placeholder, Replace("" & pArr(i), ",", ".")), placeholderOther, Replace("" & list2.getVal(i), ",", ".")))
+            res.add Application.Evaluate(Replace(Replace(Replace(operation, placeholder, Replace("" & pArr(i), ",", ".")), placeholderOther, Replace("" & list2.getVal(i), ",", ".")), idx, cnt))
+            cnt = cnt + 1
         Next i
     Else
         For i = 0 To targLen
-            res.add Application.Evaluate(Replace(Replace(operation, placeholder, "" & pArr(i)), placeholderOther, "" & list2.getVal(i)))
+            res.add Application.Evaluate(Replace(Replace(Replace(operation, placeholder, "" & pArr(i)), placeholderOther, "" & list2.getVal(i)), idx, cnt))
+            cnt = cnt + 1
         Next i
     End If
     
@@ -689,7 +788,7 @@ End Function
 Public Function slice(Optional ByVal fromIndex, Optional ByVal toIndex, Optional ByVal step) As Lists
 
     Dim res As New Lists
-    res.init
+    
     
     If IsMissing(fromIndex) Then
         fromIndex = 0
@@ -792,7 +891,7 @@ End Function
 
 Public Function sort() As Lists
     Dim res As New Lists
-    res.init
+    
     
     Dim arr
     
@@ -816,15 +915,27 @@ Public Function p()
     Debug.Print Me.toString
 End Function
 
-Public Function e()
+Public Function unique() As Lists
+    Dim tmp As Object
+    Set tmp = CreateObject("scripting.dictionary")
+    tmp.compareMode = vbTextCompare
+    
+    Dim k
+    
+    For Each k In Me.toArray
+        tmp(k) = 1
+    Next k
+    
+    Me.clear
+    Set unique = Me.addAll(tmp.Keys)
+    
+    Set tmp = Nothing
 End Function
 
 Public Function copy() As Lists
     Dim res As New Lists
-    res.init
     
     res.addAll (Me.toArray)
-    
     Set copy = res
     
 End Function
@@ -866,5 +977,3 @@ Private Sub QuickSort(vArray As Variant, ByVal inLow As Integer, ByVal inHi As I
   If (tmpLow < inHi) Then QuickSort vArray, tmpLow, inHi
 
 End Sub
-
-
