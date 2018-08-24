@@ -1,3 +1,14 @@
+ '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'@desc                                     Util Class Lists
+'@author                                   Qiou Yang
+'@lastUpdate                               24.08.2018
+'                                          code refactor
+'
+'@TODO                                     optional params
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+
 Option Explicit
 
 
@@ -100,9 +111,9 @@ Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String
     
     
     Dim rowNum As Integer
-    rowNum = rng.Rows.Count
+    rowNum = rng.Rows.count
     Dim colNum As Integer
-    colNum = rng.Columns.Count
+    colNum = rng.Columns.count
     
     Dim i
     
@@ -592,53 +603,33 @@ Public Function map(ByVal operation As String, Optional ByVal placeholder As Str
     Set map = res
 End Function
 
-Public Function mapList(ByVal operation As String, Optional ByVal replaceDecimalPoint As Boolean = True) As Lists
-    
-    Dim tmpStr As String
-    tmpStr = operation
-    
+' first reduce then map
+
+Public Function mapList(ByVal operation As String, ByVal reduceOp As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal initialVal = 1, Optional ByVal placeholderInitialVal As String = "?") As Lists
     Dim res As New Lists
-    
-    
-    Dim idx As New Lists
-    idx.init
+    Dim tmp As New Lists
     
     Dim i
-    Dim j
-    
-    Dim re As Object
-    Set re = CreateObject("vbscript.regexp")
-    
-    With re
-        .Global = True
-        .pattern = "#(\d+)(\D|\b)"
-    End With
-    
-    For Each i In re.Execute(operation)
-        idx.add CInt(i.submatches(0))
-    Next i
-    
-    idx.sort
+    Dim cnt As Long
+    cnt = 0
     
     If replaceDecimalPoint Then
         For Each i In Me.toArray
-            For Each j In idx.toArray
-                tmpStr = Replace(tmpStr, "#" & j, Replace("" & i.getVal(j), ",", "."))
-            Next j
-            res.add Application.Evaluate(tmpStr)
-            tmpStr = operation
+            i = tmp.addAll(i).reduce(reduceOp, initialVal, placeholder, placeholderInitialVal, idx, replaceDecimalPoint)
+            res.add (Application.Evaluate(Replace(Replace(operation, placeholder, Replace("" & i, ",", ".")), idx, cnt & "")))
+            cnt = cnt + 1
         Next i
     Else
         For Each i In Me.toArray
-            For Each j In idx.toArray
-                operation = Replace(operation, "#" & j, "" & i.getVal(j))
-            Next j
-            res.add Application.Evaluate(tmpStr)
-            tmpStr = operation
+            i = tmp.addAll(i).reduce(reduceOp, initialVal, placeholder, placeholderInitialVal, idx, replaceDecimalPoint)
+            res.add (Application.Evaluate(Replace(Replace(operation, placeholder, "" & i), idx, cnt & "")))
+            cnt = cnt + 1
         Next i
     End If
     
     Set mapList = res
+    Set tmp = Nothing
+   
 End Function
 
 ''''''''''''
@@ -927,7 +918,7 @@ Public Function unique() As Lists
     Next k
     
     Me.clear
-    Set unique = Me.addAll(tmp.Keys)
+    Set unique = Me.addAll(tmp.keys)
     
     Set tmp = Nothing
 End Function
