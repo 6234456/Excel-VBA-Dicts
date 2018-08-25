@@ -1,7 +1,7 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
-'@lastUpdate                               22.08.2018
+'@lastUpdate                               25.08.2018
 '                                          code refactor
 '                                          add workbook namespace
 '@TODO                                     optional params
@@ -381,11 +381,15 @@ Function arrToDict(keyArr, valArr, Optional ByVal isReversed As Boolean = False,
     
     If isReversed Then
         For i = UBound(keyArr) To LBound(keyArr) Step -1
-            res(IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i))) = valArr(UBound(valArr) + i - UBound(keyArr))
+            If Len(Trim(CStr(keyArr(i)))) > 0 Then
+                res(IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i))) = valArr(UBound(valArr) + i - UBound(keyArr))
+            End If
         Next i
     Else
         For i = LBound(keyArr) To UBound(keyArr)
-            res(IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i))) = valArr(LBound(valArr) + i - LBound(keyArr))
+            If Len(Trim(CStr(keyArr(i)))) > 0 Then
+                res(IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i))) = valArr(LBound(valArr) + i - LBound(keyArr))
+            End If
         Next i
     End If
     
@@ -628,6 +632,27 @@ Public Function clear()
     pDict.RemoveAll
 End Function
 
+Public Function nulls(Optional ByVal toVal) As Dicts
+    
+    Dim k
+    
+    If IsMissing(toVal) Then
+         For Each k In Me.keys
+            If IsEmpty(Me.dict(k)) Then
+                Me.dict.remove k
+            End If
+        Next k
+    Else
+        For Each k In Me.keys
+            If IsEmpty(Me.dict(k)) Then
+                Me.dict(k) = toVal
+            End If
+        Next k
+    End If
+
+End Function
+
+
 Public Function getNamedVal(ByVal nm As String) As Dicts
     If pIsNamed Then
         Dim i As Long
@@ -757,6 +782,28 @@ Public Function map(ByVal operation As String, Optional ByVal placeholder As Str
 End Function
 
 
+Public Function filter(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo As Variant = 0, Optional ByVal filterWith As Long = 1) As Dicts
+     Dim l As New Lists
+     Dim tmp As New Lists
+     
+     If filterWith = ProcessWith.Value Then
+        ' map to true or false
+        Set tmp = l.addAll(Me.valsArr).map(operation, placeholder, idx, replaceDecimalPoint, setNullValTo)
+        Set pDict = Me.arrToDict(l.addAll(Me.keysArr, False).filterWith(tmp).toArray, l.addAll(Me.valsArr, False).filterWith(tmp).toArray)
+     ElseIf filterWith = ProcessWith.Key Then
+        Set tmp = l.addAll(Me.keysArr).map(operation, placeholder, idx, replaceDecimalPoint, setNullValTo)
+        Set pDict = Me.arrToDict(l.addAll(Me.keysArr, False).filterWith(tmp).toArray, l.addAll(Me.valsArr, False).filterWith(tmp).toArray)
+     ElseIf filterWith = ProcessWith.RangedValue Then
+        
+     Else
+        Err.Raise 8889, , "unknown aggregate parameter"
+     End If
+     
+     Set filter = Me
+     Set l = Nothing
+     Set tmp = Nothing
+End Function
+
 
 Public Function updateFromArray(ByVal arr, Optional ByVal updateWith As Long = 1) As Dicts
     Dim keyArr
@@ -784,8 +831,6 @@ Public Function updateFromArray(ByVal arr, Optional ByVal updateWith As Long = 1
 
 End Function
 
-
-
 Public Function mapKey(ByRef d As Dicts) As Dicts
     Dim res As Dicts
     Set res = New Dicts
@@ -802,58 +847,7 @@ Public Function mapKey(ByRef d As Dicts) As Dicts
 
 End Function
 
-'''''''
-'@param   re: RegExp-Obj with group
-'         pos: the position of the group which is designated as the new key
-''''''''
-Public Function mapKeyReg(ByRef re As Object, Optional ByVal pos As Long = 0) As Dicts
-    Dim res As New Dicts
 
-    Dim k
-
-    For Each k In pDict.keys
-        If re.test(k) Then
-            res.dict(re.Execute(k)(0).submatches(pos)) = pDict.item(k)
-        End If
-    Next k
-
-    Set mapKeyReg = res
-    Set res = Nothing
-End Function
-
-
-Public Function mapKeyX(ByVal operation As String, Optional ByVal placeholder As String = "{*}") As Dicts
-    Dim res As New Dicts
-
-    Dim k
-
-    For Each k In pDict.keys
-        res.dict(Application.Evaluate(Replace(operation, placeholder, CStr(k)))) = pDict.item(k)
-    Next k
-
-    Set mapKeyX = res
-    Set res = Nothing
-End Function
-
-
-'''''''
-'@param   re: RegExp-Obj with group
-'         pos: the position of the group which is designated as the new val
-''''''''
-Public Function mapValReg(ByRef re As Object, Optional ByVal pos As Long = 0) As Dicts
-    Dim res As Dicts
-    Set res = New Dicts
-    Dim k
-
-    For Each k In pDict.keys
-        If re.test(pDict.item(k)) Then
-            res.dict(k) = re.Execute(pDict.item(k))(0).submatches(pos)
-        End If
-    Next k
-
-    Set mapValReg = res
-    Set res = Nothing
-End Function
 
 ' dict(k) -> Array(1,1,1,1,1)  =>  dict(k) -> 5
 Public Function reduceRng(ByVal sign As String) As Dicts
@@ -1013,71 +1007,6 @@ Private Function reduceArrayX(ByVal arr, ByVal operation As String, Optional ByV
     End If
 
     reduceArrayX = initVal
-End Function
-
-
-Public Function filterVal(ByVal operation As String, Optional ByVal placeholder As String = "{*}", Optional ByVal hasThousandSep As Boolean = True) As Dicts
-    Dim k
-    Dim tmp As String
-    
-    Dim res As Dicts
-    Set res = New Dicts
-    
-
-    If hasThousandSep Then
-        For Each k In pDict.keys
-            tmp = Replace(pDict(k) & "", ",", ".")
-            
-            If Application.Evaluate(Replace(operation, placeholder, tmp)) Then
-                res.dict(k) = pDict(k)
-            End If
-        Next k
-    Else
-        For Each k In pDict.keys
-            If Application.Evaluate(Replace(operation, placeholder, pDict(k) & "")) Then
-                res.dict(k) = pDict(k)
-            End If
-        Next k
-    End If
-
-    Set filterVal = res
-    
-End Function
-
-
-Public Function filterExclude(ByVal reg As Object) As Dicts
-    
-    Dim k
-    
-    Dim res As Dicts
-    Set res = New Dicts
-    
-    
-    For Each k In pDict.keys
-      If Not reg.test(k) Then
-        res.dict(k) = pDict(k)
-      End If
-    Next k
-    
-    Set filterExclude = res
-    
-End Function
-
-Public Function filterInclude(ByVal reg As Object) As Dicts
-    
-    Dim k
-    
-    Dim res As New Dicts
-    
-    
-    For Each k In pDict.keys
-      If reg.test(k) Then
-        res.dict(k) = pDict(k)
-      End If
-    Next k
-    
-    Set filterInclude = res
-    Set res = Nothing
 End Function
 
 ''''''''''''''''''''
@@ -1267,7 +1196,7 @@ End Function
 
 'print the key=>value pairs of this Dicts
 Public Function p()
-    Debug.Print Me.X_toString(Me)
+    Debug.Print Me.x_toString(Me)
 End Function
 
 ' print iterables to screen
@@ -1278,7 +1207,7 @@ Private Function a_toString(ByVal arr As Variant, Optional ByVal lvl As Integer 
     
     For Each i In arr
         If Not IsNumeric(i) Then
-            res = res & X_toString(i, lvl + 1) & ", "
+            res = res & x_toString(i, lvl + 1) & ", "
         Else
             res = res & Replace(" " & i, ",", ".") & ", "
         End If
@@ -1291,11 +1220,11 @@ Private Function a_toString(ByVal arr As Variant, Optional ByVal lvl As Integer 
 
 End Function
 
-Private Function Dicts_toString(d As Variant, Optional ByVal lvl As Integer = 0) As String
+Private Function dicts_toString(d As Variant, Optional ByVal lvl As Integer = 0) As String
 
     If d.count = 0 Then
         
-        Dicts_toString = "{}"
+        dicts_toString = "{}"
         
     Else
     
@@ -1304,30 +1233,29 @@ Private Function Dicts_toString(d As Variant, Optional ByVal lvl As Integer = 0)
         res = "{" & Chr(10)
         
         For Each k In d.dict.keys
-            res = res & String(lvl, Chr(9)) & k & Chr(9) & "=>" & Chr(9) & X_toString(d.dict(k), lvl + 1) & "," & Chr(10)
+            res = res & String(lvl, Chr(9)) & k & Chr(9) & "=>" & Chr(9) & x_toString(d.dict(k), lvl + 1) & "," & Chr(10)
         Next k
         
         res = Left(res, Len(res) - 2)
         
         
-        Dicts_toString = res & Chr(10) & String(lvl, Chr(9)) & "}"
+        dicts_toString = res & Chr(10) & String(lvl, Chr(9)) & "}"
     
     End If
 
 End Function
 
-Public Function X_toString(x As Variant, Optional ByVal lvl As Integer = 0) As String
+Public Function x_toString(x As Variant, Optional ByVal lvl As Integer = 0) As String
         
     If IsArray(x) Then
-        X_toString = a_toString(x, lvl)
+        x_toString = a_toString(x, lvl)
     ElseIf Me.isDict(x) Then
-        X_toString = Dicts_toString(x, lvl)
+        x_toString = dicts_toString(x, lvl)
     Else
-        X_toString = CStr(x)
+        x_toString = CStr(x)
     End If
 
 End Function
-
 
 Public Function pk()
 
@@ -1367,7 +1295,6 @@ Public Function toJSON(Optional ByVal k As String = "root") As String
     Next ky
     
     toJSON = Left(res, Len(res) - 2) & Chr(13) & "]}"
-    
     
 End Function
 
