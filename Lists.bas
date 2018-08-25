@@ -1,7 +1,7 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
-'@lastUpdate                               24.08.2018
+'@lastUpdate                               25.08.2018
 '                                          code refactor
 '
 '@TODO                                     optional params
@@ -276,7 +276,11 @@ Public Function replaceAllAt(ByVal eles, ByVal index As Integer) As Lists
     Set replaceAllAt = Me
 End Function
 
-Public Function addAll(ByVal arr) As Lists
+Public Function addAll(ByVal arr, Optional ByVal keepOldElements As Boolean = True) As Lists
+
+    If Not keepOldElements Then
+        Me.clear
+    End If
     
     Dim i
 
@@ -640,7 +644,6 @@ End Function
 Public Function filter(ByVal judgement As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0) As Lists
     Dim res As New Lists
     
-    
     Dim i
     Dim cnt As Long
     cnt = 0
@@ -684,7 +687,6 @@ Public Function filterWith(arr As Variant) As Lists
     
     Dim res As New Lists
     
-
     For Each i In xToArray(arr)
         If i Then
             res.add Me.getVal(cnt)
