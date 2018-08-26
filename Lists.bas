@@ -1,7 +1,7 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
-'@lastUpdate                               25.08.2018
+'@lastUpdate                               26.08.2018
 '                                          code refactor
 '
 '@TODO                                     optional params
@@ -58,7 +58,15 @@ End Sub
 
 Public Function isEmptyList() As Boolean
     
-    isEmptyList = (pLen = 0)
+    isEmptyList = True
+    
+    Dim i
+    For i = 0 To pLen - 1
+        If Not IsEmpty(pArr(i)) Then
+            isEmptyList = False
+            Exit For
+        End If
+    Next i
 
 End Function
 
@@ -703,7 +711,6 @@ End Function
 
 Public Function nullVal(Optional setValTo As Variant) As Lists
     Dim res As New Lists
-    
     
     Dim i
     
