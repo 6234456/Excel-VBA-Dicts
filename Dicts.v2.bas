@@ -1,7 +1,7 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
-'@lastUpdate                               25.08.2018
+'@lastUpdate                               26.08.2018
 '                                          code refactor
 '                                          add workbook namespace
 '@TODO                                     optional params
@@ -30,6 +30,12 @@ Enum ProcessWith
     Key = 0
     Value = 1
     RangedValue = 2
+End Enum
+
+Enum AggregateMethod
+    AggMap = 0
+    AggReduce = 1
+    Aggfilter = 2
 End Enum
 
 
@@ -632,23 +638,43 @@ Public Function clear()
     pDict.RemoveAll
 End Function
 
-Public Function nulls(Optional ByVal toVal) As Dicts
+
+' if delete if all the elements are empty
+' if value specified, set all empty value in the range to the value
+Public Function nulls(Optional ByVal toVal, Optional isRanged As Boolean = False) As Dicts
     
     Dim k
     
-    If IsMissing(toVal) Then
-         For Each k In Me.keys
-            If IsEmpty(Me.dict(k)) Then
-                Me.dict.remove k
-            End If
-        Next k
+    If Not isRanged Then
+        If IsMissing(toVal) Then
+             For Each k In Me.keys
+                If IsEmpty(Me.dict(k)) Then
+                    Me.dict.remove k
+                End If
+            Next k
+        Else
+            For Each k In Me.keys
+                If IsEmpty(Me.dict(k)) Then
+                    Me.dict(k) = toVal
+                End If
+            Next k
+        End If
     Else
-        For Each k In Me.keys
-            If IsEmpty(Me.dict(k)) Then
-                Me.dict(k) = toVal
-            End If
-        Next k
+        Dim l As New Lists
+        If IsMissing(toVal) Then
+            For Each k In Me.keys
+                If l.addAll(Me.dict(k), False).isEmptyList Then
+                    Me.dict.remove k
+                End If
+            Next k
+        Else
+            For Each k In Me.keys
+                Me.dict(k) = l.addAll(Me.dict(k), False).nullVal(toVal).toArray
+            Next k
+        End If
     End If
+    
+    Set nulls = Me
 
 End Function
 
@@ -731,7 +757,7 @@ Public Function update(ByVal dict2 As Dicts) As Dicts
     Set update = res
 End Function
 
-Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal reduceWith As Long = 1, Optional ByVal reduceValRangeOp As String = "") As Variant
+Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal reduceWith As Long = ProcessWith.Value) As Variant
      Dim l As New Lists
      
      If Len(reduceValRangeOp) > 0 Then
@@ -743,16 +769,13 @@ Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, O
      ElseIf reduceWith = ProcessWith.Key Then
         reduce = l.addAll(Me.keysArr).reduce(operation, initialVal, placeholder, placeholderInitialVal, replaceDecimalPoint)
      ElseIf reduceWith = ProcessWith.RangedValue Then
-        reduce = Me.map(reduceValRangeOp, placeholder, idx, replaceDecimalPoint, setNullValTo, ProcessWith.RangedValue).reduce(operation, initialVal, placeholder, placeholderInitialVal, replaceDecimalPoint)
+    
      Else
         Err.Raise 8889, , "unknown aggregate parameter"
      End If
      
      Set l = Nothing
 End Function
-
-
-
 
 ''''''''''''
 '@param     operation:              string to be evaluated, e.g. _*2 will be interpreated as ele * 2
@@ -761,7 +784,7 @@ End Function
 '           replaceDecimalPoint:    whether the Germany Decimal Point should be replace by "."
 '@example   get length of the valsArray -> ProcessWith.Value
 ''''''''''''
-Public Function map(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0, Optional ByVal mapWith As Long = 1, Optional ByVal mapValRangeOp As String = "", Optional ByVal initialVal = 1, Optional ByVal placeholderInitialVal As String = "?") As Dicts
+Public Function map(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0, Optional ByVal mapWith As Long = ProcessWith.Value) As Dicts
      Dim l As New Lists
      
      If Len(mapValRangeOp) > 0 Then
@@ -782,7 +805,35 @@ Public Function map(ByVal operation As String, Optional ByVal placeholder As Str
 End Function
 
 
-Public Function filter(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo As Variant = 0, Optional ByVal filterWith As Long = 1) As Dicts
+Public Function ranged(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0, Optional ByVal initialVal As Variant = 1, Optional ByVal aggregate As Long = AggregateMethod.AggReduce) As Dicts
+    
+    Dim k
+    Dim res As New Dicts
+    Dim l As New Lists
+    
+    If aggregate = AggregateMethod.AggReduce Then
+        For Each k In Me.keys
+            res.dict(k) = l.addAll(Me.dict(k), False).reduce(operation, initialVal, placeholder, placeholderInitialVal, replaceDecimalPoint)
+        Next k
+    ElseIf aggregate = AggregateMethod.AggMap Then
+         For Each k In Me.keys
+            res.dict(k) = l.addAll(Me.dict(k), False).map(operation, placeholder, idx, replaceDecimalPoint, setNullValTo).toArray
+        Next k
+    ElseIf aggregate = AggregateMethod.Aggfilter Then
+        For Each k In Me.keys
+            res.dict(k) = l.addAll(Me.dict(k), False).filter(operation, placeholder, idx, replaceDecimalPoint, setNullValTo).toArray
+        Next k
+    Else
+        Err.Raise 8889, , "unknown aggregate parameter"
+    End If
+    
+    Set ranged = res
+    Set res = Nothing
+    Set l = Nothing
+End Function
+
+
+Public Function filter(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo As Variant = 0, Optional ByVal filterWith As Long = ProcessWith.Value) As Dicts
      Dim l As New Lists
      Dim tmp As New Lists
      
@@ -805,7 +856,7 @@ Public Function filter(ByVal operation As String, Optional ByVal placeholder As 
 End Function
 
 
-Public Function updateFromArray(ByVal arr, Optional ByVal updateWith As Long = 1) As Dicts
+Public Function updateFromArray(ByVal arr, Optional ByVal updateWith As Long = ProcessWith.Value) As Dicts
     Dim keyArr
     Dim valArr
     
