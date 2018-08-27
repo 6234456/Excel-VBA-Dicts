@@ -7,10 +7,7 @@
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-
-
 Option Explicit
-
 
 Private pArr()              ' the underlying array object
 Private pMaxLen As Integer  ' the maximal length of array object
