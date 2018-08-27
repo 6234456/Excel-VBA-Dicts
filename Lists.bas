@@ -1,8 +1,8 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
-'@lastUpdate                               26.08.2018
-'                                          code refactor
+'@lastUpdate                               27.08.2018
+'                                          integrate with Dicts
 '
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -98,6 +98,24 @@ listhandler:
     isInstance = res
 End Function
 
+Public Function ClassHashID() As String
+    ClassHashID = "#Lists_X5719DWX897HCDWC9"
+End Function
+
+Public Function isLists(o As Variant) As Boolean
+    On Error GoTo errhandler_d
+    
+    Dim a As Boolean
+    a = (o.ClassHashID = "#Lists_X5719DWX897HCDWC9")
+    
+errhandler_d:
+    If Err.Number = 0 Then
+        isLists = a
+    Else
+        isLists = False
+    End If
+End Function
+
 Private Function isObj(ByVal obj) As Boolean
     On Error GoTo listhandler
     
@@ -188,6 +206,28 @@ Public Function toRng(ByRef rng As Range)
         End If
     End If
     
+End Function
+
+Public Function fromArray(arr, Optional ByVal iter As Boolean = True) As Lists
+    Dim l As New Lists
+    
+    If iter Then
+        Dim i
+        For Each i In arr
+            If IsArray(i) Then
+                l.add fromArray(i)
+            Else
+                l.add i
+            End If
+        Next i
+        
+        Set fromArray = l
+    Else
+        Set fromArray = l.addAll(arr)
+    End If
+    
+    Set l = Nothing
+
 End Function
 
 Private Function fromSerial(ByVal start As Long, ByVal ending As Long, Optional ByVal steps As Long = 1) As Variant
@@ -844,15 +884,17 @@ Public Function toArray() As Variant
         ReDim arr(0 To pLen - 1)
         Dim i As Integer
      
-        If Not isObj(pArr(i)) Then
-            For i = 0 To pLen - 1
+        For i = 0 To pLen - 1
+            If Not isObj(pArr(i)) Then
                 arr(i) = pArr(i)
-            Next i
-        Else
-            For i = 0 To pLen - 1
-                Set arr(i) = pArr(i)
-            Next i
-        End If
+            Else
+                If Me.isLists(pArr(i)) Then
+                    arr(i) = pArr(i).toArray()
+                Else
+                    Set arr(i) = pArr(i)
+                End If
+            End If
+        Next i
     Else
         arr = Array()
     End If
