@@ -4,7 +4,7 @@
 '@lastUpdate                               27.08.2018
 '                                          code refactor
 '                                          integrate load/reduce/map/filter into single function
-'                                          new feature: load horizontally: set isVertical to false
+'                                          new feature: load horizontally: loadH
 '@TODO                                     add comments
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -247,17 +247,17 @@ End Function
 '''''''''''''''''''''''''''
 Function getRange(Optional ByVal targSht As String = "", Optional ByVal targKeyCol As Long = 1, Optional ByVal targValCol = 1, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByRef wb As Workbook, Optional ByVal isVertical As Boolean = True) As Range
     
-    ' if the targValCol is single number, put it into array
-    If Not IsArray(targValCol) Then
-        targValCol = Array(targValCol)
-    End If
-    
     ' get the target Range
     With getTargetSht(targSht, wb)
         If IsMissing(targRowBegine) Then
             targRowBegine = 1
         End If
         
+        ' if the targValCol is single number, put it into array
+        If Not IsArray(targValCol) Then
+            targValCol = Array(targValCol)
+        End If
+
         If IsMissing(targRowEnd) Then
             If isVertical Then
                 targRowEnd = .Cells(.Rows.count, targKeyCol).End(xlUp).row
@@ -267,9 +267,9 @@ Function getRange(Optional ByVal targSht As String = "", Optional ByVal targKeyC
         End If
         
         If isVertical Then
-            Set getRange = .Range(Cells(targRowBegine, targValCol(LBound(targValCol))), Cells(targRowEnd, targValCol(UBound(targValCol))))
+            Set getRange = .Cells(targRowBegine, targValCol(LBound(targValCol))).Resize(targRowEnd - targRowBegine + 1, targValCol(UBound(targValCol)) - targValCol(LBound(targValCol)) + 1)
         Else
-            Set getRange = .Range(Cells(targValCol(LBound(targValCol)), targRowBegine), Cells(targValCol(UBound(targValCol)), targRowEnd))
+            Set getRange = .Cells(targValCol(LBound(targValCol)), targRowBegine).Resize(targValCol(UBound(targValCol)) + 1 - targValCol(LBound(targValCol)), targRowEnd + 1 - targRowBegine)
         End If
     End With
     
@@ -317,7 +317,7 @@ Public Function rngToArr(ByRef rng As Range, Optional ByVal isVertical As Boolea
         Next i
     End If
     
-    ' if the result array contains only one element, return the result
+    ' if the result array contains only one element and the element is not array itself, return the result
     If UBound(res) = LBound(res) Then
         rngToArr = res(0)
     Else
@@ -348,7 +348,7 @@ Public Function rngToAddress(ByRef rng As Range) As Variant
    
     For i = fst.row To lst.row
         For j = fst.Column To lst.Column
-            res(i - fst.row + 1, j - fst.Column + 1) = Cells(i, j).Address
+            res(i - fst.row + 1, j - fst.Column + 1) = Cells(i, j).Address(0, 0)
         Next j
     Next i
     
@@ -423,9 +423,7 @@ End Function
 '@param:    arr             target array
 '''''''''''
 Private Function arrLen(arr) As Long
-    
     arrLen = UBound(arr) - LBound(arr) + 1
-
 End Function
 
 
@@ -438,31 +436,37 @@ End Function
 '''''''''''
 Function arrToDict(keyArr, valArr, Optional ByVal isReversed As Boolean = False, Optional ByVal keyCstr As Boolean = False) As Object
     
-    ' combine the key-value pair in a zipped mode
-    If arrLen(keyArr) <> arrLen(valArr) Then
-        Err.Raise 8888, "", "Arrays with different length can not be combined"
-    End If
-    
     Dim res As Object
     Set res = CreateObject("scripting.dictionary")
     res.compareMode = vbTextCompare
     
-    Dim i
+    ' combine the key-value pair in a zipped mode
+    If arrLen(keyArr) = 0 Then
     
-    If isReversed Then
-        For i = UBound(keyArr) To LBound(keyArr) Step -1
-            If Len(Trim(CStr(keyArr(i)))) > 0 Then
-                res(IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i))) = valArr(UBound(valArr) + i - UBound(keyArr))
-            End If
-        Next i
+    ElseIf arrLen(keyArr) = 1 And arrLen(valArr) > 1 Then
+        res(keyArr(LBound(keyArr))) = valArr
     Else
-        For i = LBound(keyArr) To UBound(keyArr)
-            If Len(Trim(CStr(keyArr(i)))) > 0 Then
-                res(IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i))) = valArr(LBound(valArr) + i - LBound(keyArr))
-            End If
-        Next i
+        If arrLen(keyArr) <> arrLen(valArr) Then
+            Err.Raise 8888, "", "Arrays with different length can not be combined"
+        End If
+        
+        Dim i
+        
+        If isReversed Then
+            For i = UBound(keyArr) To LBound(keyArr) Step -1
+                If Len(Trim(CStr(keyArr(i)))) > 0 Then
+                    res(IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i))) = valArr(UBound(valArr) + i - UBound(keyArr))
+                End If
+            Next i
+        Else
+            For i = LBound(keyArr) To UBound(keyArr)
+                If Len(Trim(CStr(keyArr(i)))) > 0 Then
+                    res(IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i))) = valArr(LBound(valArr) + i - LBound(keyArr))
+                End If
+            Next i
+        End If
     End If
-    
+
     Set arrToDict = res
     Set res = Nothing
     
@@ -483,8 +487,8 @@ Function rngToDict(ByRef keyRng As Range, ByRef valRng As Range, Optional ByVal 
     Set rngToDict = arrToDict(rngToArr(keyRng, Not isVertical), IIf(IIf(isVertical, valRng.Columns.count, valRng.Rows.count) = 1, rngToArr(valRng, Not isVertical, asAddress), rngToArr(valRng, isVertical, asAddress)), isReversed)
 End Function
  
-' to add the shtName just through dict.productX("""'src'!{*}""").p
-Public Function load(Optional ByVal Sht As String = "", Optional ByVal KeyCol As Long = 1, Optional ByVal ValCol = 1, Optional RowBegine As Variant = 1, Optional ByVal RowEnd As Variant, Optional ByVal reg As Variant, Optional ByVal ignoreNullVal As Boolean, Optional ByVal setNullValTo As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False, Optional ByVal isVertical As Boolean = True) As Dicts
+' to add the shtName through dict.map("""'src'!{*}""")
+Public Function load(Optional ByVal Sht As String = "", Optional ByVal KeyCol As Long = 1, Optional ByVal ValCol = 1, Optional RowBegine As Variant = 1, Optional ByVal RowEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False, Optional ByVal isVertical As Boolean = True) As Dicts
     Dim keyRng As Range
     Set keyRng = getRange(Sht, KeyCol, KeyCol, RowBegine, RowEnd, wb, isVertical)
     
@@ -503,85 +507,60 @@ Public Function load(Optional ByVal Sht As String = "", Optional ByVal KeyCol As
     Set valRng = Nothing
 End Function
 
+Public Function loadH(Optional ByVal Sht As String = "", Optional ByVal KeyRow As Long = 1, Optional ByVal ValRow = 1, Optional ColBegine As Variant = 1, Optional ByVal ColEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False) As Dicts
+    Set loadH = load(Sht:=Sht, KeyCol:=KeyRow, ValCol:=ValRow, RowBegine:=ColBegine, RowEnd:=ColEnd, wb:=wb, Reversed:=Reversed, asAddress:=asAddress, appendMode:=appendMode, isVertical:=False)
+End Function
+
+
+'@desc update self with new dictionary obj
 Public Function of(ByRef dictObj As Object) As Dicts
     Set pDict = dictObj
     Set of = Me
 End Function
 
+'@desc create a new instance with the dictionary obj
 Public Function createInstance(ByRef dictObj As Object) As Dicts
     Dim res As New Dicts
     Set createInstance = res.of(dictObj)
     Set res = Nothing
-
 End Function
 
-Public Sub loadStruct(ByVal targSht As String, ByVal targKeyCol1 As Long, ByVal targKeyCol2 As Long, ByVal targValCol, Optional targRowBegine As Variant, Optional ByVal targRowEnd As Variant, Optional ByVal reg As Variant)
-      ' store the name of current sheet
+Public Function loadStruct(ByVal Sht As String, ByVal KeyCol1 As Long, ByVal KeyCol2 As Long, ByVal ValCol, Optional RowBegine As Variant, Optional ByVal RowEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False) As Dicts
 
-    Dim tmpname As String
-    Dim i As Long
-    
-    tmpname = ActiveSheet.Name
-    If Trim(targSht) = "" Then
-        targSht = tmpname
-    End If
-    
-    With Worksheets(targSht)
+    With getTargetSht(Sht, wb)
     
         Dim dict As Object
         Set dict = CreateObject("Scripting.Dictionary")
         dict.compareMode = vbTextCompare
         
-        If IsMissing(targRowBegine) Then
-            targRowBegine = 1
+        If IsMissing(RowBegine) Then
+            RowBegine = 1
         End If
         
-        If IsMissing(targRowEnd) Then
-            targRowEnd = .Cells(Rows.count, targKeyCol2).End(xlUp).row
-        End If
-        
-        Dim hasReg As Boolean
-        hasReg = Not IsMissing(reg)
-        Dim test As Boolean
-        test = True
-        
-        If IsArray(targValCol) Then
-            ' the number of cols
-            pRngCol = UBound(targValCol) - LBound(targValCol) + 1
-            
-            If pRngCol = 1 Then
-                targValCol = targValCol(LBound(targValCol))
-            End If
-        Else
-            pRngCol = 1
+        If IsMissing(RowEnd) Then
+            RowEnd = .Cells(Rows.count, KeyCol2).End(xlUp).row
         End If
         
         Dim tmpPreviousRow As Long
         Dim tmpCurrentRow As Long
         Dim tmpDict As New Dicts
         
-        tmpPreviousRow = targRowEnd
+        tmpPreviousRow = RowEnd
         tmpCurrentRow = tmpPreviousRow
         
-        Do While tmpCurrentRow > targRowBegine
-            tmpCurrentRow = .Cells(tmpCurrentRow, targKeyCol1).End(xlUp).row
+        Do While tmpCurrentRow > RowBegine
+            tmpCurrentRow = .Cells(tmpCurrentRow, KeyCol1).End(xlUp).row
             
-            If pRngCol = 1 Then
-                Call tmpDict.load(targSht, targKeyCol2, targValCol, tmpCurrentRow + 1, tmpPreviousRow, reg, True)
-            Else
-                Call tmpDict.loadRng(targSht, targKeyCol2, targValCol, tmpCurrentRow + 1, tmpPreviousRow, reg)
-            End If
-            
-            Set dict(Trim(CStr(.Cells(tmpCurrentRow, targKeyCol1).Value))) = tmpDict
-            
+            Set dict(.Cells(tmpCurrentRow, KeyCol1).Value) = tmpDict.load(Sht, KeyCol2, ValCol, tmpCurrentRow + 1, tmpPreviousRow, wb, Reversed)
             Set tmpDict = Nothing
             
             tmpPreviousRow = tmpCurrentRow - 1
         Loop
-    
+        
+        Set loadStruct = Me.of(dict)
     End With
 
-End Sub
+End Function
 
 ' rng can be Range Object or an array
 Public Function frequencyCount(ByRef rng) As Dicts
@@ -615,92 +594,77 @@ Public Function frequencyCount(ByRef rng) As Dicts
     Set res = Nothing
 End Function
 
-Public Sub unload(ByVal shtName As String, ByVal KeyCol As Long, ByVal startingRow As Long, ByVal startingCol As Long, Optional ByVal endRow As Long, Optional ByVal endCol As Long)
-
-    Dim tmpname As String
-    tmpname = ActiveSheet.Name
+Public Sub unload(ByVal shtName As String, ByVal keyPos As Long, ByVal startingRow As Long, ByVal startingCol As Long, Optional ByVal endRow As Long, Optional ByVal endCol As Long, Optional ByRef wb As Workbook, Optional ByVal isVertical As Boolean = True)
     
-    If Trim(shtName) = "" Then
-        shtName = tmpname
-    End If
-
-    With Worksheets(shtName)
-       If IsMissing(endRow) Or endRow = 0 Then
-           endRow = .Cells(Rows.count, KeyCol).End(xlUp).row
-       End If
-       
-       Dim c
-
-       If IsMissing(endCol) Or endCol = 0 Then
-           For Each c In .Cells(startingRow, KeyCol).Resize(endRow - startingRow + 1, 1).Cells
-               If pDict.exists(Trim(CStr(c.Value))) Then
-                   .Cells(c.row, startingCol).Value = pDict(Trim(CStr(c.Value)))
-               End If
-           Next c
-       Else
-           
-           Dim tmpC As Long
-           
-           If pRngCol = 0 Then
-               tmpC = endCol - startingCol + 1
-           Else
-               tmpC = pRngCol
-           End If
-           
-           For Each c In .Cells(startingRow, KeyCol).Resize(endRow - startingRow + 1, 1).Cells
-               If pDict.exists(Trim(CStr(c.Value))) Then
-                   .Cells(c.row, startingCol).Resize(1, tmpC) = pDict(Trim(CStr(c.Value)))
-               End If
-           Next c
-       
-       End If
-       
+    Dim c
+    Dim tmp
+    Dim l
+    
+    With getTargetSht(shtName, wb)
+        If isVertical Then
+        
+            If IsMissing(endRow) Or endRow = 0 Then
+               endRow = .Cells(.Rows.count, keyPos).End(xlUp).row
+            End If
+            
+            For Each c In .Cells(startingRow, keyPos).Resize(endRow - startingRow + 1, 1).Cells
+                If pDict.exists(c.Value) Then
+                    tmp = pDict(c.Value)
+                    If IsArray(tmp) Then
+                        If IsMissing(endCol) Or endCol = 0 Then
+                            .Cells(c.row, startingCol).Resize(1, arrLen(tmp)).Value = tmp
+                        Else
+                             l = pList.fromArray(tmp, False).take(endCol - startingCol + 1).toArray
+                            .Cells(c.row, startingCol).Resize(1, arrLen(l)).Value = l
+                        End If
+                    Else
+                        .Cells(c.row, startingCol).Value = tmp
+                    End If
+                End If
+            Next c
+            
+        Else
+            If IsMissing(endCol) Or endCol = 0 Then
+               endCol = .Cells(keyPos, .Columns.count).End(xlToLeft).Column
+            End If
+            
+            For Each c In .Cells(keyPos, startingCol).Resize(1, endCol - startingCol + 1).Cells
+                If pDict.exists(c.Value) Then
+                    tmp = pDict(c.Value)
+                    If IsArray(tmp) Then
+                        If IsMissing(endRow) Or endRow = 0 Then
+                            .Cells(startingRow, c.Column).Resize(arrLen(tmp), 1).Value = Application.WorksheetFunction.Transpose(tmp)
+                        Else
+                            l = pList.fromArray(tmp, False).take(endCol - startingCol + 1).toArray
+                            .Cells(startingRow, c.Column).Resize(arrLen(l), 1).Value = Application.WorksheetFunction.Transpose(l)
+                        End If
+                    Else
+                        .Cells(startingRow, c.Column).Value = tmp
+                    End If
+                End If
+            Next c
+        End If
     End With
 
 End Sub
 
 
-Public Sub dump(ByVal shtName As String, Optional ByVal KeyCol As Long = 1, Optional ByVal startingRow As Long = 1, Optional ByVal startingCol As Long, Optional ByVal endCol As Long)
+Public Sub dump(ByVal shtName As String, Optional ByVal keyPos As Long = 1, Optional ByVal startingRow As Long = 1, Optional ByVal startingCol As Long = 2, Optional ByVal endRow As Long, Optional ByVal endCol As Long, Optional ByRef wb As Workbook, Optional ByVal isVertical As Boolean = True)
 
-    If IsMissing(startingCol) Or startingCol = 0 Then
-        startingCol = KeyCol + 1
-    End If
+    With getTargetSht(shtName, wb)
+        'unload the key
+        If isVertical Then
+            .Cells(startingRow, keyPos).Resize(Me.count, 1) = Application.WorksheetFunction.Transpose(Me.keysArr)
+        Else
+            .Cells(keyPos, startingCol).Resize(1, Me.count) = Me.keysArr
+        End If
+    End With
     
-    If shtName = "" Then
-        shtName = ActiveSheet.Name
-    End If
-    
-    'unload the key
-    Worksheets(shtName).Cells(startingRow, KeyCol).Resize(Me.count, 1) = Application.WorksheetFunction.Transpose(Me.keysArr)
-    
-    Call Me.unload(shtName, KeyCol, startingRow, startingCol, , endCol)
-
+    Me.unload shtName, keyPos, startingRow, startingCol, endRow, endCol, wb, isVertical
 End Sub
 
 Public Function exists(ByVal k) As Boolean
-    
-    exists = pDict.exists(Trim(CStr(k)))
-    
-End Function
-
-' 1 param get the item
-' 2 params set the value to the key
-Public Function item(ByVal k, Optional v) As Variant
-    
-    If IsMissing(v) Then
-        If IsObject(pDict(Trim(CStr(k)))) Then
-            Set item = pDict(Trim(CStr(k)))
-        Else
-            item = pDict(Trim(CStr(k)))
-        End If
-    Else
-        If IsObject(v) Then
-            Set pDict(Trim(CStr(k))) = v
-        Else
-            pDict(Trim(CStr(k))) = v
-        End If
-    End If
-
+    exists = pDict.exists(k)
 End Function
 
 Public Function clear()
@@ -761,25 +725,12 @@ Private Function isRanged_(ByRef obj As Dicts) As Boolean
     
 End Function
 
-
-Public Function getNamedVal(ByVal nm As String) As Dicts
-    If pIsNamed Then
-        Dim i As Long
-        i = pNamedArray.item(nm)
-        
-        Set getNamedVal = Me.reduceRngX("if({i}=" & i & ",{v}+{*},{v})")
-    Else
-        Set getNamedVal = Nothing
-    End If
-End Function
-
-
 Public Function sliceWithName(ByVal nm As String) As Dicts
     If pIsNamed Then
         Dim i As Long
-        i = pNamedArray.item(nm)
+        i = pNamedArray.dict(nm)
         
-        Set sliceWithName = Me.filterRngX("{i}=" & i)
+        Set sliceWithName = Me.ranged("{i}=" & i, aggregate:=AggregateMethod.Aggfilter)
     Else
         Set sliceWithName = Nothing
     End If
@@ -882,6 +833,21 @@ Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, O
      Set l = Nothing
 End Function
 
+Public Function reduceRngVertical(Optional ByVal operation As String = "?+_", Optional ByVal initialVal As Variant = 0, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True) As Lists
+    Set pList = pList.fromArray(Me.valsArr).zipMe
+
+    Dim l As New Lists
+    Dim k
+
+    For k = 0 To pList.length - 1
+        l.add pList.getVal(k).reduce(operation, initialVal, placeholder, placeholderInitialVal, replaceDecimalPoint)
+    Next k
+   
+    Set reduceRngVertical = l
+    Set l = Nothing
+    pList.clear
+End Function
+
 ''''''''''''
 '@param     operation:              string to be evaluated, e.g. _*2 will be interpreated as ele * 2
 '           placeholder:            placeholder to be replaced by the value
@@ -906,7 +872,7 @@ Public Function map(ByVal operation As String, Optional ByVal placeholder As Str
 End Function
 
 
-Public Function ranged(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0, Optional ByVal initialVal As Variant = 1, Optional ByVal aggregate As Long = AggregateMethod.AggReduce) As Dicts
+Public Function ranged(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0, Optional ByVal initialVal As Variant = 0, Optional ByVal aggregate As Long = AggregateMethod.AggReduce) As Dicts
     
     Dim k
     Dim res As New Dicts
@@ -956,6 +922,12 @@ Public Function filter(ByVal operation As String, Optional ByVal placeholder As 
      Set tmp = Nothing
 End Function
 
+''''''''''''
+'@desc      replace keys or vals with a new array
+'@param     arr:                    the new array
+'           updateWith:             keys or values to be replaced
+'@return    self after update
+''''''''''''
 Public Function updateFromArray(ByVal arr, Optional ByVal updateWith As Long = ProcessWith.Value) As Dicts
     Dim keyArr
     Dim valArr
@@ -982,114 +954,10 @@ Public Function updateFromArray(ByVal arr, Optional ByVal updateWith As Long = P
 
 End Function
 
-
-
-
-Public Function reduceRngVertical(ByVal sign As String) As Variant
-    Dim k
-    Dim i
-    Dim tmpCnt As Long
-    tmpCnt = 1
-    Dim arr()
-    
-    Dim u As Long
-    Dim l As Long
-
-    For Each k In pDict.keys
-        If tmpCnt = 1 Then
-            u = UBound(pDict(k))
-            l = LBound(pDict(k))
-            ReDim arr(l To u)
-            tmpCnt = 2
-            
-            If sign = "+" Then
-                For i = l To u
-                    arr(i) = 0
-                Next i
-            Else
-                For i = l To u
-                    arr(i) = 1
-                Next i
-            End If
-            
-        End If
-        
-        If sign = "+" Then
-            For i = l To u
-                arr(i) = arr(i) + pDict(k)(i)
-            Next i
-        Else
-            For i = l To u
-                arr(i) = arr(i) * pDict(k)(i)
-            Next i
-        End If
-
-    Next k
-   
-    
-    reduceRngVertical = arr
-
-
-End Function
-
 Private Function ifEmpty(ByVal targetVal As Variant, ByVal valIfNull As Variant) As Variant
     
    ifEmpty = IIf(IsEmpty(targetVal), valIfNull, targetVal)
 
-End Function
-
-
-Private Function reduceArray(ByVal arr, ByVal sign As String, Optional ByVal valIfNull As Variant = 0) As Variant
-    Dim res As Variant
-    Dim k
-    
-    
-    If sign = "" Or sign = "+" Then
-        res = 0
-        For Each k In arr
-            res = res + ifEmpty(k, valIfNull)
-        Next k
-    ElseIf sign = "*" Then
-        res = 1
-        For Each k In arr
-            res = res * ifEmpty(k, valIfNull)
-        Next k
-    End If
-    
-    reduceArray = res
-    
-End Function
-
-'''''''''''''''''''''''''''
-'@desc:     reduceArrayX -> reduce the array as value through the operation defined
-'           ref. reduceRngX
-'@param:    arr             array to be reduced
-'           operation       operation to be performed on the array, e.g. get the sum of array "{v}+{*}"
-'           initVal         the inital value of the reduction, e.g. get the sum of array 0
-'           placeholder     placeholder of the value
-'           index           placeholder of the index, starting from 0
-'           cumVal          the accumlator
-'           hasThousandSep  relevant for "." as thousand sep
-'           valIfNull       set value if the array position is null
-'''''''''''''''''''''''''''
-Private Function reduceArrayX(ByVal arr, ByVal operation As String, Optional ByVal initVal As Variant = 0, Optional ByVal placeholder As String = "{*}", Optional ByVal index As String = "{i}", Optional ByVal cumVal As String = "{v}", Optional ByVal hasThousandSep As Boolean = True, Optional ByVal valIfNull As Variant = 0) As Variant
-    Dim k
-    Dim v
-    Dim tmp As String
-    
-    If hasThousandSep Then
-        For k = LBound(arr) To UBound(arr)
-            tmp = Replace(ifEmpty(arr(k), valIfNull) & "", ",", ".")
-            initVal = Replace(initVal & "", ",", ".")
-            initVal = Application.Evaluate(Replace(Replace(Replace(operation, placeholder, tmp), index, k), cumVal, initVal))
-        Next k
-    Else
-        For k = LBound(arr) To UBound(arr)
-            initVal = Application.Evaluate(Replace(Replace(Replace(operation, placeholder, ifEmpty(arr(k), valIfNull) & ""), index, k), cumVal, initVal))
-        Next k
-    End If
-
-    reduceArrayX = initVal
 End Function
 
 ''''''''''''''''''''
@@ -1293,15 +1161,15 @@ Public Function rng(ByVal start As Long, ByVal ending As Long, Optional ByVal st
     rng = res
 End Function
 
-Public Function y(Optional ByVal Sht As String = "", Optional ByVal col As Long = 1, Optional ByVal wb As String = "") As Long
+Public Function y(Optional ByVal Sht As String = "", Optional ByVal col As Long = 1, Optional ByVal wb As Workbook) As Long
     
-    y = getTargetWorksheet(Sht, wb).Cells(Rows.count, col).End(xlUp).row
+    y = getTargetSht(Sht, wb).Cells(Rows.count, col).End(xlUp).row
     
 End Function
 
-Public Function x(Optional ByVal Sht As String = "", Optional ByVal row As Long = 1, Optional ByVal wb As String = "") As Long
+Public Function x(Optional ByVal Sht As String = "", Optional ByVal row As Long = 1, Optional ByVal wb As Workbook) As Long
     
-    x = getTargetWorksheet(Sht, wb).Cells(row, Columns.count).End(xlToLeft).Column
+    x = getTargetSht(Sht, wb).Cells(row, Columns.count).End(xlToLeft).Column
     
 End Function
 
