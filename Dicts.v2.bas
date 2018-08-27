@@ -774,18 +774,17 @@ Public Function union(dict2 As Dicts, Optional ByVal keepOriginalVal As Boolean 
     Set res = Nothing
 End Function
 
-Public Function intersect(dict2 As Dicts, Optional ByVal keepOriginalVal As Boolean = True) As Dicts
+Public Function intersect(ByRef dict2 As Dicts, Optional ByVal keepOriginalVal As Boolean = True) As Dicts
     Dim k
     
     Dim res As New Dicts
-    res.dict = pDict
     
     For Each k In dict2.dict.keys
         If pDict.exists(k) Then
             If Not keepOriginalVal Then
                 res.dict(k) = dict2.dict(k)
             Else
-                res.dict(k) = pDict.dict(k)
+                res.dict(k) = pDict(k)
             End If
         End If
     Next k
