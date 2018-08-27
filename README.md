@@ -4,7 +4,7 @@
 ```
 
      Dim dict As New Dicts
-     dict.map("_*2").filterKey("_>4")
+     dict.map("_*2").filter("_>4")
 
 ```
 
@@ -24,11 +24,13 @@ The spreadsheet "src" is as below.
 ```
 **_2. Load the dict with data in the spreadsheet_**
 ```
-     Call d.loadRng("", 1, d.rng(2, d.x("", 1)), 2)
+     With d.load("", 1, d.rng(2, d.x("", 1)), 2)
 ```
 **_3. filter it functionally and elegantly_**
 ```
-     d.reduceRngX("{v}+{*}/1.1^({i}+1)").filterVal("{*}>5").p
+          .ranged("?+_/1.1^({i}+1)", AggregateMethod.AggReduce).filter("_>5").p
+          
+     End With
 ```
 
 ## Support or Contact
