@@ -1,11 +1,13 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
-'@lastUpdate                               27.08.2018
+'@lastUpdate                               28.08.2018
 '                                          code refactor
 '                                          integrate load/reduce/map/filter into single function
 '                                          new feature: load horizontally: loadH
+'                                          new feature: groupBy
 '@TODO                                     add comments
+'
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 ' declaration compulsory
@@ -19,10 +21,10 @@ Private pDict As Object
 Private pLevel As Long
 
 ' has column label
-Private pIsNamed As Boolean
+Private pIsLabeled As Boolean
 
 ' column label as Dicts, label -> index
-Private pNamedArray As Dicts
+Private pLabeledArray As Dicts
 
 ' target workbook
 Private pWb As Workbook
@@ -37,7 +39,7 @@ Enum ProcessWith
 End Enum
 
 ' aggregate method for the function ranged
-Enum AggregateMethod
+Enum aggregateMethod
     AggMap = 0
     AggReduce = 1
     Aggfilter = 2
@@ -48,7 +50,6 @@ Public Property Get sign() As String
     sign = "Dicts"
 End Property
 
-
 Private Sub Class_Initialize()
     ini
     Set pList = New Lists
@@ -57,7 +58,7 @@ End Sub
 Private Sub Class_Terminate()
     Set pWb = Nothing
     Set pDict = Nothing
-    Set pNamedArray = Nothing
+    Set pLabeledArray = Nothing
     Set pList = Nothing
 End Sub
 
@@ -77,24 +78,24 @@ Public Property Get dict() As Object
 End Property
 
 ' get/set column labels
-Public Property Get named() As Dicts
-    If pIsNamed Then
-        Set named = pNamedArray
+Public Property Get label() As Dicts
+    If pIsLabeled Then
+        Set label = pLabeledArray
     Else
-        Set named = Nothing
+        Set label = Nothing
     End If
 End Property
 
-Public Property Let named(ByVal rng As Variant)
-    setNamed rng
+Public Property Let label(ByVal rng As Variant)
+    setLabel rng
 End Property
 
 '''''''''''
 '@desc:     set the column/row labels to the underlying Dicts
 '@return:   this Dicts
-'@param:    rng either as Dicts or as Range
+'@param:    rng either as Array, Dicts or as Range
 '''''''''''
-Public Function setNamed(ByVal rng As Variant) As Dicts
+Public Function setLabel(ByVal rng As Variant) As Dicts
    
    On Error GoTo namedArrayHdl
    
@@ -118,22 +119,48 @@ namedArrayHdl:
             cnt = cnt + 1
         Next c
         
-        Me.setNamed d
+        Me.setLabel d
     Else
         'if rng is a Dicts-Object
-        Set pNamedArray = rng
+        If isDict(rng) Then
+            Set pLabeledArray = rng
+        ElseIf IsArray(rng) Then
+            Dim k
+            
+            For k = 0 To UBound(rng) - LBound(rng)
+                d.dict(rng(k)) = k
+            Next k
+            
+            Me.setLabel d
+        End If
     End If
     
-   pIsNamed = True
+   pIsLabeled = True
    
-   Set setNamed = Me
+   Set setLabel = Me
    
 End Function
 
 ' get length of the key-value pairs
-Public Property Get count() As Long
-    count = pDict.count
-End Property
+Public Function count(Optional ByVal recursive As Boolean = False, Optional ByVal allLevels As Boolean = True) As Long
+    
+    If Not recursive Then
+        count = pDict.count
+    Else
+        If isDicted_(Me) Then
+            Dim k
+            Dim res As Long
+            
+            For Each k In Me.keys
+                res = IIf(allLevels, 1, 0) + res + Me.dict(k).count(True)
+            Next k
+            
+            count = res
+        Else
+            count = pDict.count
+        End If
+    End If
+End Function
 
 ' get keys as Array, if no element return null-Array
 Public Property Get keysArr() As Variant
@@ -332,13 +359,18 @@ End Function
 '@return:   two-dimensional array with the address of the target range
 '@param:    rng             as target Range
 '''''''''''
-Public Function rngToAddress(ByRef rng As Range) As Variant
+Public Function rngToAddress(ByRef rng As Range, Optional ByVal withShtName As Boolean = True, Optional ByVal withWbName As Boolean = False) As Variant
     
     Dim fst As Range
     Set fst = rng.Cells(1, 1)
     
     Dim lst As Range
     Set lst = fst.Offset(rng.Rows.count - 1, rng.Columns.count - 1)
+    
+    Dim shtName As String
+    Dim wbName As String
+    shtName = "'" & fst.Worksheet.Name & "'!"
+    wbName = "'[" & fst.Worksheet.parent.Name & "]" & fst.Worksheet.Name & "'!"
         
     Dim i As Long
     Dim j As Long
@@ -348,11 +380,14 @@ Public Function rngToAddress(ByRef rng As Range) As Variant
    
     For i = fst.row To lst.row
         For j = fst.Column To lst.Column
-            res(i - fst.row + 1, j - fst.Column + 1) = Cells(i, j).Address(0, 0)
+            res(i - fst.row + 1, j - fst.Column + 1) = IIf(withWbName, wbName & Cells(i, j).Address(0, 0), IIf(withShtName, shtName & Cells(i, j).Address(0, 0), Cells(i, j).Address(0, 0)))
         Next j
     Next i
     
     rngToAddress = res
+    
+    Set fst = Nothing
+    Set lst = Nothing
 
 End Function
 
@@ -486,14 +521,27 @@ Function rngToDict(ByRef keyRng As Range, ByRef valRng As Range, Optional ByVal 
     
     Set rngToDict = arrToDict(rngToArr(keyRng, Not isVertical), IIf(IIf(isVertical, valRng.Columns.count, valRng.Rows.count) = 1, rngToArr(valRng, Not isVertical, asAddress), rngToArr(valRng, isVertical, asAddress)), isReversed)
 End Function
- 
-' to add the shtName through dict.map("""'src'!{*}""")
-Public Function load(Optional ByVal Sht As String = "", Optional ByVal KeyCol As Long = 1, Optional ByVal ValCol = 1, Optional RowBegine As Variant = 1, Optional ByVal RowEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False, Optional ByVal isVertical As Boolean = True) As Dicts
+
+'''''''''''
+'@desc:     read data from xlSht to Dicts-Collection
+'@return:   Dicts-object
+'@param:    Sht             Name of the target Worksheet
+'           KeyCol          the position of key,  the n-th column if isVertical, else the n-th row
+'           ValCol          the position of value,  can be either a number or an array representing the n-th column if isVertical, else the n-th row
+'           RowBegine       the firstRow of the data entries
+'           RowEnd          the lastRow of the data entries, by default the last none-empty row
+'           wb              the Workbook-Object which contains the Sht, by default thisWorkbook
+'           Reversed        read from bottom up if true.
+'           asAddress       load the addresses
+'           appendMode      keep the old data if evoked multiple times
+'           isVertical      vlook if true
+'''''''''''
+Public Function load(Optional ByVal Sht As String = "", Optional ByVal KeyCol As Long = 1, Optional ByVal valCol = 1, Optional RowBegine As Variant = 1, Optional ByVal RowEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False, Optional ByVal isVertical As Boolean = True) As Dicts
     Dim keyRng As Range
     Set keyRng = getRange(Sht, KeyCol, KeyCol, RowBegine, RowEnd, wb, isVertical)
     
     Dim valRng As Range
-    Set valRng = getRange(Sht, KeyCol, ValCol, RowBegine, RowEnd, wb, isVertical)
+    Set valRng = getRange(Sht, KeyCol, valCol, RowBegine, RowEnd, wb, isVertical)
     
     If pDict.count = 0 Or Not appendMode Then
         Set pDict = rngToDict(keyRng, valRng, Reversed, asAddress)
@@ -508,7 +556,7 @@ Public Function load(Optional ByVal Sht As String = "", Optional ByVal KeyCol As
 End Function
 
 Public Function loadH(Optional ByVal Sht As String = "", Optional ByVal KeyRow As Long = 1, Optional ByVal ValRow = 1, Optional ColBegine As Variant = 1, Optional ByVal ColEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False) As Dicts
-    Set loadH = load(Sht:=Sht, KeyCol:=KeyRow, ValCol:=ValRow, RowBegine:=ColBegine, RowEnd:=ColEnd, wb:=wb, Reversed:=Reversed, asAddress:=asAddress, appendMode:=appendMode, isVertical:=False)
+    Set loadH = load(Sht:=Sht, KeyCol:=KeyRow, valCol:=ValRow, RowBegine:=ColBegine, RowEnd:=ColEnd, wb:=wb, Reversed:=Reversed, asAddress:=asAddress, appendMode:=appendMode, isVertical:=False)
 End Function
 
 
@@ -525,7 +573,14 @@ Public Function createInstance(ByRef dictObj As Object) As Dicts
     Set res = Nothing
 End Function
 
-Public Function loadStruct(ByVal Sht As String, ByVal KeyCol1 As Long, ByVal KeyCol2 As Long, ByVal ValCol, Optional RowBegine As Variant, Optional ByVal RowEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False) As Dicts
+Public Function emptyInstance() As Dicts
+    Dim res As New Dicts
+    Set emptyInstance = res
+    Set res = Nothing
+End Function
+
+
+Public Function loadStruct(ByVal Sht As String, ByVal KeyCol1 As Long, ByVal KeyCol2 As Long, ByVal valCol, Optional RowBegine As Variant, Optional ByVal RowEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False) As Dicts
 
     With getTargetSht(Sht, wb)
     
@@ -551,7 +606,7 @@ Public Function loadStruct(ByVal Sht As String, ByVal KeyCol1 As Long, ByVal Key
         Do While tmpCurrentRow > RowBegine
             tmpCurrentRow = .Cells(tmpCurrentRow, KeyCol1).End(xlUp).row
             
-            Set dict(.Cells(tmpCurrentRow, KeyCol1).Value) = tmpDict.load(Sht, KeyCol2, ValCol, tmpCurrentRow + 1, tmpPreviousRow, wb, Reversed)
+            Set dict(.Cells(tmpCurrentRow, KeyCol1).Value) = tmpDict.load(Sht, KeyCol2, valCol, tmpCurrentRow + 1, tmpPreviousRow, wb, Reversed)
             Set tmpDict = Nothing
             
             tmpPreviousRow = tmpCurrentRow - 1
@@ -648,19 +703,40 @@ Public Sub unload(ByVal shtName As String, ByVal keyPos As Long, ByVal startingR
 
 End Sub
 
-
-Public Sub dump(ByVal shtName As String, Optional ByVal keyPos As Long = 1, Optional ByVal startingRow As Long = 1, Optional ByVal startingCol As Long = 2, Optional ByVal endRow As Long, Optional ByVal endCol As Long, Optional ByRef wb As Workbook, Optional ByVal isVertical As Boolean = True)
+Public Sub dump(ByVal shtName As String, Optional ByVal keyPos As Long = 1, Optional ByVal startingRow As Long = 1, Optional ByVal startingCol As Long = 2, Optional ByVal endRow As Long, Optional ByVal endCol As Long, Optional ByRef wb As Workbook, Optional ByVal isVertical As Boolean = True, Optional ByVal trailingRows As Long = 0)
 
     With getTargetSht(shtName, wb)
-        'unload the key
-        If isVertical Then
-            .Cells(startingRow, keyPos).Resize(Me.count, 1) = Application.WorksheetFunction.Transpose(Me.keysArr)
+
+        If isDicted_(Me) Then
+            Dim k
+            Dim cnt As Long
+            
+            For Each k In Me.keys
+                If isVertical Then
+                    .Cells(startingRow + cnt, keyPos) = k
+                Else
+                    .Cells(keyPos, startingCol + cnt) = k
+                End If
+            
+                Me.dict(k).dump shtName, keyPos + 1, startingRow + cnt + 1, startingCol + 1, startingRow + cnt + Me.dict(k).count(True), endCol, wb, isVertical, trailingRows
+                cnt = cnt + Me.dict(k).count(True) + 1
+    
+            Next k
+
         Else
-            .Cells(keyPos, startingCol).Resize(1, Me.count) = Me.keysArr
+             'unload the key
+            If isVertical Then
+                .Cells(startingRow, keyPos).Resize(Me.count, 1) = Application.WorksheetFunction.Transpose(Me.keysArr)
+            Else
+                .Cells(keyPos, startingCol).Resize(1, Me.count) = Me.keysArr
+            End If
+        
+            Me.unload shtName, keyPos, startingRow, startingCol, endRow, endCol, wb, isVertical
         End If
+        
     End With
     
-    Me.unload shtName, keyPos, startingRow, startingCol, endRow, endCol, wb, isVertical
+    
 End Sub
 
 Public Function exists(ByVal k) As Boolean
@@ -715,6 +791,7 @@ Public Function nulls(Optional ByVal toVal, Optional isRanged As Boolean = False
 
 End Function
 
+' containing arrays as element
 Private Function isRanged_(ByRef obj As Dicts) As Boolean
     
     Dim k
@@ -725,14 +802,25 @@ Private Function isRanged_(ByRef obj As Dicts) As Boolean
     
 End Function
 
-Public Function sliceWithName(ByVal nm As String) As Dicts
-    If pIsNamed Then
+' containing Dicts as elements
+Private Function isDicted_(ByRef obj As Dicts) As Boolean
+    
+    Dim k
+    For Each k In obj.keys
+        isDicted_ = isDict(obj.dict(k))
+        Exit For
+    Next k
+    
+End Function
+
+Public Function sliceWithLabel(ByVal nm As String) As Dicts
+    If pIsLabeled Then
         Dim i As Long
-        i = pNamedArray.dict(nm)
+        i = pLabeledArray.dict(nm)
         
-        Set sliceWithName = Me.ranged("{i}=" & i, aggregate:=AggregateMethod.Aggfilter)
+        Set sliceWithLabel = Me.ranged("{i}=" & i, aggregate:=aggregateMethod.Aggfilter)
     Else
-        Set sliceWithName = Nothing
+        Set sliceWithLabel = Nothing
     End If
 End Function
 
@@ -871,21 +959,21 @@ Public Function map(ByVal operation As String, Optional ByVal placeholder As Str
 End Function
 
 
-Public Function ranged(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0, Optional ByVal initialVal As Variant = 0, Optional ByVal aggregate As Long = AggregateMethod.AggReduce) As Dicts
+Public Function ranged(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0, Optional ByVal initialVal As Variant = 0, Optional ByVal aggregate As Long = aggregateMethod.AggReduce) As Dicts
     
     Dim k
     Dim res As New Dicts
     Dim l As New Lists
     
-    If aggregate = AggregateMethod.AggReduce Then
+    If aggregate = aggregateMethod.AggReduce Then
         For Each k In Me.keys
             res.dict(k) = l.addAll(Me.dict(k), False).reduce(operation, initialVal, placeholder, placeholderInitialVal, replaceDecimalPoint)
         Next k
-    ElseIf aggregate = AggregateMethod.AggMap Then
+    ElseIf aggregate = aggregateMethod.AggMap Then
          For Each k In Me.keys
             res.dict(k) = l.addAll(Me.dict(k), False).map(operation, placeholder, idx, replaceDecimalPoint, setNullValTo).toArray
         Next k
-    ElseIf aggregate = AggregateMethod.Aggfilter Then
+    ElseIf aggregate = aggregateMethod.Aggfilter Then
         For Each k In Me.keys
             res.dict(k) = l.addAll(Me.dict(k), False).filter(operation, placeholder, idx, replaceDecimalPoint, setNullValTo).toArray
         Next k
@@ -919,6 +1007,133 @@ Public Function filter(ByVal operation As String, Optional ByVal placeholder As 
      Set filter = Me
      Set l = Nothing
      Set tmp = Nothing
+End Function
+
+
+Public Function groupBy(ByRef attr, ByVal valCol As Long, Optional ByVal aggregateBy = xlSum) As Dicts
+        
+    If Not isRanged_(Me) Then
+        Err.Raise 9997, , "more than one attribute in data set expected"
+    End If
+    
+    If Not IsArray(attr) Then
+        Err.Raise 9999, , "attribute array should be specified!"
+    End If
+
+    Dim l As Long
+    l = arrLen(attr)
+
+    If l = 0 Then
+        Err.Raise 9998, , "at least one attribute should be contained"
+    End If
+
+    If aggregateBy <> xlSum And aggregateBy <> xlCount Then
+        Err.Raise 9996, , "aggregateMethod unkown, should be xlCount or xlSum"
+    End If
+    
+    ' lists of attributes
+    Set pList = pList.fromArray(Me.valsArr).zipMe
+
+    
+    ' get value array where the aggregate method to be operated on
+    Dim valArr
+    valArr = pList.getVal(valCol).toArray
+    
+    ' extract target attributes specified in the attr
+    Dim nl As New Lists
+    For l = LBound(attr) To UBound(attr)
+        nl.add pList.getVal(attr(l))
+    Next l
+    
+    ' transpose to the target data entry
+    Set pList = nl.zipMe
+    Set nl = Nothing
+    
+    Dim k, i, arr, e
+    Dim parent As Dicts
+    Dim ub As Long
+    Dim cnt As Long
+    Dim res As New Dicts
+    
+    cnt = 0
+    
+    ' loop through the entries to update the result Dicts
+    For Each k In Me.keys
+    
+        arr = pList.getVal(cnt).toArray
+        
+        l = arrLen(arr)
+        ub = UBound(arr)
+        
+        ' process the attributes of the entry
+        ' i stands for the level of the dicts, level 0 is the root, on the top most level to perform the aggregate
+        For i = LBound(arr) To UBound(arr)
+        
+            Set nl = Nothing
+            
+            Set parent = cascading(res, nl.addAll(arr, False).take(i - LBound(arr)).toArray)
+            e = arr(i)
+            
+            If parent.exists(e) Then
+                If i = ub Then
+                    parent.dict(e) = parent.dict(e) + IIf(aggregateBy = xlSum, valArr(cnt), IIf(aggregateBy = xlCount, 1, 0))
+                End If
+            Else
+                If i = ub Then
+                    parent.dict(e) = IIf(aggregateBy = xlSum, valArr(cnt), IIf(aggregateBy = xlCount, 1, 0))
+                Else
+                    parent.dict.add e, emptyInstance
+                End If
+            End If
+            
+            Set nl = Nothing
+            
+        Next i
+        
+        cnt = cnt + 1
+        
+    Next k
+    
+    Set groupBy = res
+    
+    pList.clear
+    Set nl = Nothing
+    Set res = Nothing
+End Function
+
+Public Function groupByLabel(ByVal attr, ByVal valCol As String, Optional ByVal aggregateBy = xlSum) As Dicts
+        
+    If Not pIsLabeled Then
+        Err.Raise 9994, , "attribute labels should be specified!"
+    End If
+    
+    Dim k
+    Dim col As Long
+    
+    col = pLabeledArray.dict(valCol)
+    
+    Dim attrCol()
+    ReDim attrCol(0 To arrLen(attr) - 1)
+    
+    For k = 0 To arrLen(attr) - 1
+        attrCol(k) = pLabeledArray.dict(attr(k + LBound(attr)))
+    Next k
+    
+    Set groupByLabel = groupBy(attrCol, col, aggregateBy)
+        
+End Function
+
+' search for the sub-dicts through the array content
+Private Function cascading(ByRef dict As Dicts, arr) As Dicts
+    Dim e
+    Dim tmp
+    Set tmp = dict
+    
+    For Each e In arr
+       Set tmp = tmp.dict(e)
+    Next e
+    
+    Set cascading = tmp
 End Function
 
 ''''''''''''
@@ -1000,6 +1215,33 @@ Private Function clone__(ByVal d As Dicts, ByVal l As Long) As Dicts
     Set res = Nothing
 
 End Function
+
+Public Function sort(Optional ByVal isAscending As Boolean = True, Optional ByVal sortRecursively As Boolean = True) As Dicts
+    
+    Dim res As New Dicts
+    Dim l As New Lists
+    Set l = l.addAll(Me.keysArr).sort(isAscending)
+    
+    Dim i
+    
+    For i = 0 To l.length - 1
+        If sortRecursively Then
+            If isDict(Me.dict(l.getVal(i))) Then
+                res.dict.add l.getVal(i), Me.dict(l.getVal(i)).sort(isAscending, sortRecursively)
+            Else
+                res.dict.add l.getVal(i), Me.dict(l.getVal(i))
+            End If
+        Else
+            res.dict.add l.getVal(i), Me.dict(l.getVal(i))
+        End If
+    Next i
+
+    Set sort = res
+    Set res = Nothing
+    Set l = Nothing
+
+End Function
+
 
 ' ______________________________ Print______________________________________________
 
