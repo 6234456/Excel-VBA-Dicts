@@ -7,7 +7,6 @@
 '                                          new feature: load horizontally: loadH
 '                                          new feature: groupBy
 '@TODO                                     add comments
-'
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 ' declaration compulsory
@@ -16,9 +15,6 @@ Option Explicit
 '___________private variables_____________
 'scripting.Dictionary Object
 Private pDict As Object
-
-' heirachry key level
-Private pLevel As Long
 
 ' has column label
 Private pIsLabeled As Boolean
@@ -39,16 +35,11 @@ Enum ProcessWith
 End Enum
 
 ' aggregate method for the function ranged
-Enum aggregateMethod
+Enum AggregateMethod
     AggMap = 0
     AggReduce = 1
     Aggfilter = 2
 End Enum
-
-' unified property of Dicts/Lists/Nodes
-Public Property Get sign() As String
-    sign = "Dicts"
-End Property
 
 Private Sub Class_Initialize()
     ini
@@ -70,7 +61,6 @@ End Property
 Public Property Let wb(ByRef wkb As Workbook)
    Set pWb = wkb
 End Property
-
 
 ' get the underlying Dicitionary-Object
 Public Property Get dict() As Object
@@ -142,6 +132,8 @@ namedArrayHdl:
 End Function
 
 ' get length of the key-value pairs
+' if recursive set to true, count the keys of all child-dicts
+' allLevels only relevant in recursive-mode, count all the keys in the structure
 Public Function count(Optional ByVal recursive As Boolean = False, Optional ByVal allLevels As Boolean = True) As Long
     
     If Not recursive Then
@@ -216,6 +208,10 @@ Public Property Let dict(ByRef dict As Object)
     Set pDict = dict
 End Property
 
+Public Property Get sign() As String
+    sign = "Dicts"
+End Property
+
 ' initiate the Dictionary-Object
 Private Sub ini()
     
@@ -234,6 +230,16 @@ Errhandler1:
     Set pWb = ThisWorkbook
     
 End Sub
+
+Public Function fromArray(ByRef arr) As Dicts
+    If IsArray(arr) Then
+       Set fromArray = pList.addAll(arr).toDict
+    ElseIf TypeName(arr) = "Lists" Then
+       Set fromArray = arr.toDict
+    Else
+        Err.Raise 9876, , "Unknown Parameter Type!"
+    End If
+End Function
 
 '''''''''''''''''''''''''''
 '@desc:     get Worksheet
@@ -791,7 +797,7 @@ Public Function nulls(Optional ByVal toVal, Optional isRanged As Boolean = False
 
 End Function
 
-' containing arrays as element
+' if containing arrays as element
 Private Function isRanged_(ByRef obj As Dicts) As Boolean
     
     Dim k
@@ -802,7 +808,7 @@ Private Function isRanged_(ByRef obj As Dicts) As Boolean
     
 End Function
 
-' containing Dicts as elements
+' if containing Dicts as elements
 Private Function isDicted_(ByRef obj As Dicts) As Boolean
     
     Dim k
@@ -818,7 +824,7 @@ Public Function sliceWithLabel(ByVal nm As String) As Dicts
         Dim i As Long
         i = pLabeledArray.dict(nm)
         
-        Set sliceWithLabel = Me.ranged("{i}=" & i, aggregate:=aggregateMethod.Aggfilter)
+        Set sliceWithLabel = Me.ranged("{i}=" & i, aggregate:=AggregateMethod.Aggfilter)
     Else
         Set sliceWithLabel = Nothing
     End If
@@ -826,6 +832,8 @@ End Function
 
 
 ' ________________________________________Class Collection Functions___________________________________________
+
+'@desc get elements not contained in dict2 but in this dict
 Public Function diff(ByVal dict2 As Dicts) As Dicts
     Dim k
     
@@ -883,21 +891,9 @@ End Function
 
 
 Public Function update(ByVal dict2 As Dicts) As Dicts
-    Dim k
+
+    Set update = Me.union(dict2, False)
     
-    Dim res As New Dicts
-    
-    For Each k In pDict.keys
-        If Not dict2.dict.exists(k) Then
-            res.dict(k) = pDict(k)
-        ElseIf pDict(k) <> dict2.dict(k) Then
-            res.dict(k) = dict2.dict(k)
-        Else
-            res.dict(k) = pDict(k)
-        End If
-    Next k
-    
-    Set update = res
 End Function
 
 Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal reduceWith As Long = ProcessWith.Value) As Variant
@@ -942,13 +938,26 @@ End Function
 '           replaceDecimalPoint:    whether the Germany Decimal Point should be replace by "."
 '@example   get length of the valsArray -> ProcessWith.Value
 ''''''''''''
-Public Function map(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0, Optional ByVal mapWith As Long = ProcessWith.Value) As Dicts
+Public Function map(ByVal operation, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0, Optional ByVal mapWith As Long = ProcessWith.Value) As Dicts
+     
+     If (Not IsReg(operation)) And TypeName(operation) <> "String" Then
+        Err.Raise 8889, , "ParameterTypeError: 'operation' should be either String or RegExp!"
+     End If
+     
      Dim l As New Lists
      
      If mapWith = ProcessWith.Value Then
-        Set map = Me.updateFromArray(l.addAll(Me.valsArr).map(operation, placeholder, idx, replaceDecimalPoint, setNullValTo).toArray, mapWith)
+        If IsReg(operation) Then
+            Set map = Me.updateFromArray(l.addAll(Me.valsArr).mapReg(operation).toArray, mapWith)
+        Else
+            Set map = Me.updateFromArray(l.addAll(Me.valsArr).map(operation, placeholder, idx, replaceDecimalPoint, setNullValTo).toArray, mapWith)
+        End If
      ElseIf mapWith = ProcessWith.Key Then
-        Set map = Me.updateFromArray(l.addAll(Me.keysArr).map(operation, placeholder, idx, replaceDecimalPoint, setNullValTo).toArray, mapWith)
+         If IsReg(operation) Then
+            Set map = Me.updateFromArray(l.addAll(Me.keysArr).mapReg(operation).toArray, mapWith)
+        Else
+            Set map = Me.updateFromArray(l.addAll(Me.keysArr).map(operation, placeholder, idx, replaceDecimalPoint, setNullValTo).toArray, mapWith)
+        End If
      ElseIf mapWith = ProcessWith.RangedValue Then
         Err.Raise 8889, , "to process RangedValue please refer to ranged"
      Else
@@ -959,21 +968,21 @@ Public Function map(ByVal operation As String, Optional ByVal placeholder As Str
 End Function
 
 
-Public Function ranged(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0, Optional ByVal initialVal As Variant = 0, Optional ByVal aggregate As Long = aggregateMethod.AggReduce) As Dicts
+Public Function ranged(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0, Optional ByVal initialVal As Variant = 0, Optional ByVal aggregate As Long = AggregateMethod.AggReduce) As Dicts
     
     Dim k
     Dim res As New Dicts
     Dim l As New Lists
     
-    If aggregate = aggregateMethod.AggReduce Then
+    If aggregate = AggregateMethod.AggReduce Then
         For Each k In Me.keys
             res.dict(k) = l.addAll(Me.dict(k), False).reduce(operation, initialVal, placeholder, placeholderInitialVal, replaceDecimalPoint)
         Next k
-    ElseIf aggregate = aggregateMethod.AggMap Then
+    ElseIf aggregate = AggregateMethod.AggMap Then
          For Each k In Me.keys
             res.dict(k) = l.addAll(Me.dict(k), False).map(operation, placeholder, idx, replaceDecimalPoint, setNullValTo).toArray
         Next k
-    ElseIf aggregate = aggregateMethod.Aggfilter Then
+    ElseIf aggregate = AggregateMethod.Aggfilter Then
         For Each k In Me.keys
             res.dict(k) = l.addAll(Me.dict(k), False).filter(operation, placeholder, idx, replaceDecimalPoint, setNullValTo).toArray
         Next k
@@ -987,24 +996,43 @@ Public Function ranged(ByVal operation As String, Optional ByVal placeholder As 
 End Function
 
 
-Public Function filter(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo As Variant = 0, Optional ByVal filterWith As Long = ProcessWith.Value) As Dicts
+Public Function filter(ByVal operation, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo As Variant = 0, Optional ByVal filterWith As Long = ProcessWith.Value) As Dicts
+     
+     If (Not IsReg(operation)) And TypeName(operation) <> "String" Then
+        Err.Raise 8889, , "ParameterTypeError: 'operation' should be either String or RegExp!"
+     End If
+     
      Dim l As New Lists
      Dim tmp As New Lists
+     Dim res As New Dicts
+     
      
      If filterWith = ProcessWith.Value Then
-        ' map to true or false
-        Set tmp = l.addAll(Me.valsArr).map(operation, placeholder, idx, replaceDecimalPoint, setNullValTo)
-        Set pDict = Me.arrToDict(l.addAll(Me.keysArr, False).filterWith(tmp).toArray, l.addAll(Me.valsArr, False).filterWith(tmp).toArray)
+     
+        If IsReg(operation) Then
+            Set tmp = l.addAll(Me.valsArr).judgeReg(operation)
+        Else
+            Set tmp = l.addAll(Me.valsArr).map(operation, placeholder, idx, replaceDecimalPoint, setNullValTo)
+        End If
+        
+        res.dict = Me.arrToDict(l.addAll(Me.keysArr, False).filterWith(tmp).toArray, l.addAll(Me.valsArr, False).filterWith(tmp).toArray)
+        
      ElseIf filterWith = ProcessWith.Key Then
-        Set tmp = l.addAll(Me.keysArr).map(operation, placeholder, idx, replaceDecimalPoint, setNullValTo)
-        Set pDict = Me.arrToDict(l.addAll(Me.keysArr, False).filterWith(tmp).toArray, l.addAll(Me.valsArr, False).filterWith(tmp).toArray)
+        
+        If IsReg(operation) Then
+            Set tmp = l.addAll(Me.keysArr).judgeReg(operation)
+        Else
+            Set tmp = l.addAll(Me.keysArr).map(operation, placeholder, idx, replaceDecimalPoint, setNullValTo)
+        End If
+     
+        res.dict = Me.arrToDict(l.addAll(Me.keysArr, False).filterWith(tmp).toArray, l.addAll(Me.valsArr, False).filterWith(tmp).toArray)
      ElseIf filterWith = ProcessWith.RangedValue Then
         Err.Raise 8889, , "to process RangedValue please refer to ranged"
      Else
         Err.Raise 8889, , "unknown aggregate parameter"
      End If
      
-     Set filter = Me
+     Set filter = res
      Set l = Nothing
      Set tmp = Nothing
 End Function
@@ -1145,6 +1173,7 @@ End Function
 Public Function updateFromArray(ByVal arr, Optional ByVal updateWith As Long = ProcessWith.Value) As Dicts
     Dim keyArr
     Dim valArr
+    Dim res As New Dicts
     
     keyArr = Me.keysArr
     valArr = Me.valsArr
@@ -1156,65 +1185,19 @@ Public Function updateFromArray(ByVal arr, Optional ByVal updateWith As Long = P
     Dim l As New Lists
     
     If updateWith = ProcessWith.Key Then
-        Set pDict = arrToDict(arr, valArr, , False)
+        res.dict = arrToDict(arr, valArr, , False)
     Else
-        Set pDict = arrToDict(keyArr, arr, , False)
+        res.dict = arrToDict(keyArr, arr, , False)
     End If
     
-    Set updateFromArray = Me
+    Set updateFromArray = res
     keyArr = Array()
     valArr = Array()
     Set l = Nothing
-
-End Function
-
-Private Function ifEmpty(ByVal targetVal As Variant, ByVal valIfNull As Variant) As Variant
-    
-   ifEmpty = IIf(IsEmpty(targetVal), valIfNull, targetVal)
-
-End Function
-
-''''''''''''''''''''
-'set all the elements to a constant
-'default to be 1
-''''''''''''''''''''
-
-Public Function constDict(Optional ByVal constant As Variant = 1) As Dicts
-    Dim k
-    Dim res As New Dicts
-    
-    For Each k In pDict.keys
-        res.dict(k) = constant
-    Next k
-    
-    Set constDict = res
-    Set res = Nothing
-End Function
-
-
-'deep copy of this-Dicts-Object
-Public Function clone() As Dicts
-    Set clone = clone__(Me, pLevel)
-End Function
-
-Private Function clone__(ByVal d As Dicts, ByVal l As Long) As Dicts
-    Dim res As New Dicts
-    Dim k
-
-    If l > 1 Then
-         For Each k In d.dict.keys
-            Set res.dict(k) = clone__(d.dict(k), l - 1)
-         Next k
-    Else
-        For Each k In d.dict.keys
-            res.dict(k) = d.dict(k)
-        Next k
-    End If
-    
-    Set clone__ = res
     Set res = Nothing
 
 End Function
+
 
 Public Function sort(Optional ByVal isAscending As Boolean = True, Optional ByVal sortRecursively As Boolean = True) As Dicts
     
@@ -1324,22 +1307,6 @@ Public Function pk()
 
 End Function
 
-Public Function ps(Optional ByVal lvl As Long = 1, Optional ByVal cnt As Long = 0)
-    
-    Dim k
-    
-    If cnt = lvl Then
-        For Each k In Me.dict.keys
-            Debug.Print String(cnt, Chr(9)) & k & Chr(9) & Me.dict(k)
-        Next k
-    Else
-        For Each k In Me.dict.keys
-            Debug.Print String(cnt, Chr(9)) & k
-            Me.dict(k).ps lvl, cnt + 1
-        Next k
-    End If
-
-End Function
 
 Public Function toJSON(Optional ByVal k As String = "root") As String
     Dim res As String
@@ -1403,62 +1370,17 @@ Public Function rng(ByVal start As Long, ByVal ending As Long, Optional ByVal st
 End Function
 
 Public Function y(Optional ByVal Sht As String = "", Optional ByVal col As Long = 1, Optional ByVal wb As Workbook) As Long
-    
     y = getTargetSht(Sht, wb).Cells(Rows.count, col).End(xlUp).row
-    
 End Function
 
 Public Function x(Optional ByVal Sht As String = "", Optional ByVal row As Long = 1, Optional ByVal wb As Workbook) As Long
-    
     x = getTargetSht(Sht, wb).Cells(row, Columns.count).End(xlToLeft).Column
-    
 End Function
 
-Private Function IsReg(testObj As Object) As Boolean
-    On Error GoTo errhandler3
-    
-    Dim a As Boolean
-    a = testObj.test("")
-    
-errhandler3:
-    If Err.Number = 0 Then
-        IsReg = True
-    Else
-        IsReg = False
-    End If
-
+Private Function IsReg(testObj) As Boolean
+    IsReg = TypeName(testObj) = "IRegExp2"
 End Function
 
-Public Function ClassHashID() As String
-    ClassHashID = "#Dicts_W3I89DWX897HH7NC9"
-End Function
-
-Public Function isDict(o As Variant) As Boolean
-    On Error GoTo errhandler_d
-    
-    Dim a As Boolean
-    a = (o.ClassHashID = "#Dicts_W3I89DWX897HH7NC9")
-    
-errhandler_d:
-    If Err.Number = 0 Then
-        isDict = a
-    Else
-        isDict = False
-    End If
-
-End Function
-
-' is Instance of Dicts, Lists or Nodes
-Private Function isObj(ByVal obj) As Boolean
-    On Error GoTo listhandler
-    
-    Dim res As Boolean
-    res = False
-    
-    Dim myType As String
-    myType = obj.sign
-    
-listhandler:
-    isObj = (Err.Number = 0)
-
+Public Function isDict(testObj As Variant) As Boolean
+   isDict = TypeName(testObj) = "Dicts"
 End Function
