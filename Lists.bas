@@ -34,12 +34,30 @@ Public Function init() As Lists
     Set init = Me
 End Function
 
+Public Function toDict() As Dicts
+    Dim res As New Dicts
+    
+    Dim i
+    For i = 0 To pLen - 1
+        res.dict.add Me.getVal(i), i
+    Next i
+    
+    Set toDict = res
+    Set res = Nothing
+
+End Function
+
+
 Public Function clear() As Lists
     Me.init
 End Function
 
 Private Sub Class_Initialize()
     Me.init
+End Sub
+
+Private Sub Class_Terminate()
+
 End Sub
 
 Private Sub check()
@@ -98,22 +116,8 @@ listhandler:
     isInstance = res
 End Function
 
-Public Function ClassHashID() As String
-    ClassHashID = "#Lists_X5719DWX897HCDWC9"
-End Function
-
-Public Function isLists(o As Variant) As Boolean
-    On Error GoTo errhandler_d
-    
-    Dim a As Boolean
-    a = (o.ClassHashID = "#Lists_X5719DWX897HCDWC9")
-    
-errhandler_d:
-    If Err.Number = 0 Then
-        isLists = a
-    Else
-        isLists = False
-    End If
+Public Function isLists(testObj As Variant) As Boolean
+   isLists = TypeName(testObj) = "Lists"
 End Function
 
 Private Function isObj(ByVal obj) As Boolean
@@ -773,6 +777,42 @@ Public Function filterWith(arr As Variant) As Lists
     Next i
     
     Set filterWith = res
+End Function
+
+Public Function filterReg(ByRef reg As Object) As Lists
+
+    Set filterReg = Me.filterWith(Me.judgeReg(reg))
+    
+End Function
+
+'@desc map to boolean array based on reg
+Public Function judgeReg(ByVal reg As Object) As Lists
+    Dim i As Long
+    Dim res As New Lists
+    
+    For i = 0 To Me.length - 1
+        res.add reg.test(Me.getVal(i))
+    Next i
+    
+    Set judgeReg = res
+    Set res = Nothing
+End Function
+
+'@desc RegExp should contain at least one group, if matched the first group will be mapped to the list,  otherwise keep the original value
+Public Function mapReg(ByVal reg As Object) As Lists
+    Dim i As Long
+    Dim res As New Lists
+    
+    For i = 0 To Me.length - 1
+        If reg.test(Me.getVal(i)) Then
+            res.add reg.Execute(Me.getVal(i))(0).submatches(0)
+        Else
+            res.add Me.getVal(i)
+        End If
+    Next i
+    
+    Set mapReg = res
+    Set res = Nothing
 End Function
 
 Public Function nullVal(Optional setValTo As Variant) As Lists
