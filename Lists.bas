@@ -1,13 +1,16 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
-'@lastUpdate                               27.08.2018
+'@lastUpdate                               28.08.2018
 '                                          integrate with Dicts
-'
+'                                          minor bug-fix
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
+
+
 Option Explicit
+
 
 Private pArr()              ' the underlying array object
 Private pMaxLen As Integer  ' the maximal length of array object
@@ -265,9 +268,13 @@ Public Function ones(ByVal n As Long) As Lists
     
 End Function
 
-Public Function add(ByVal ele) As Lists
+Public Function add(ByVal ele, Optional ByVal keepOldElements As Boolean = True) As Lists
    
     Call check
+    
+    If Not keepOldElements Then
+        Me.clear
+    End If
     
     If isObj(ele) Then
         Set pArr(pLen) = ele
@@ -412,8 +419,28 @@ End Function
 
 ' zip the Lists within the Lists
 Public Function zipMe() As Lists
-    If pLen <= 1 Then
-       Set zipMe = Me
+    If pLen = 0 Then
+        Set zipMe = Me
+    ElseIf pLen = 1 Then
+       If Me.isLists(Me.getVal(0)) Then
+        Dim k
+        Dim l As New Lists
+        Dim tmp1 As New Lists
+        
+        For k = 0 To Me.getVal(0).length - 1
+            l.add tmp1.add(Me.getVal(0).getVal(k))
+            Set tmp1 = Nothing
+        Next k
+        
+        Set zipMe = l
+        Set l = Nothing
+        Set tmp1 = Nothing
+        
+       Else
+       
+        Set zipMe = Me
+       End If
+       
     Else
         Dim i
         Dim j
@@ -718,10 +745,12 @@ End Function
 
 
 Public Function take(ByVal n As Long) As Lists
+    n = IIf(n >= 0, n, Me.length + n)
     Set take = Me.filter("{i}<" & n)
 End Function
 
 Public Function drop(ByVal n As Long) As Lists
+    n = IIf(n >= 0, n, Me.length + n)
     Set drop = Me.filter("{i}>=" & n)
 End Function
 
@@ -928,15 +957,18 @@ Public Function toString()
    
 End Function
 
-Public Function sort() As Lists
+Public Function sort(Optional ByVal isAscending As Boolean = True) As Lists
     Dim res As New Lists
-    
     
     Dim arr
     
     arr = Me.toArray
     Call QuickSort(arr, 0, pLen - 1)
     res.addAll arr
+    
+    If isAscending Then
+        Set res = res.reverse
+    End If
     
     Call override(res)
     
