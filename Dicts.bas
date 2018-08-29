@@ -164,7 +164,7 @@ End Function
 ' get keys as Array, if no element return null-Array
 Public Property Get keysArr() As Variant
     
-    Dim res() As String
+    Dim res()
     
     If Me.count > 0 Then
         ReDim res(0 To Me.count - 1)
@@ -174,12 +174,13 @@ Public Property Get keysArr() As Variant
         cnt = 0
         
         For Each k In Me.keys
-            res(cnt) = CStr(k)
+            res(cnt) = k
             cnt = cnt + 1
         Next k
     End If
     
     keysArr = res
+    Erase res
     
 End Property
 
@@ -202,7 +203,7 @@ Public Property Get valsArr() As Variant
     End If
     
     valsArr = res
-    
+    Erase res
 End Property
 
 ' get keys as iterable-object
@@ -364,6 +365,9 @@ Public Function rngToArr(ByRef rng As Range, Optional ByVal isVertical As Boolea
         rngToArr = res
     End If
     
+    Erase res
+    Erase arr
+    
 End Function
 
 
@@ -401,6 +405,7 @@ Public Function rngToAddress(ByRef rng As Range, Optional ByVal withShtName As B
     
     Set fst = Nothing
     Set lst = Nothing
+    Erase res
 
 End Function
 
@@ -414,7 +419,7 @@ End Function
 Private Function sliceArr(arr, ByVal n As Long, Optional ByVal isVertical As Boolean = True) As Variant
     
     Dim i
-    Dim res
+    Dim res()
     Dim cnt As Long
     cnt = 0
     
@@ -435,6 +440,7 @@ Private Function sliceArr(arr, ByVal n As Long, Optional ByVal isVertical As Boo
     End If
     
     sliceArr = res
+    Erase res
     
 End Function
 
@@ -503,13 +509,13 @@ Function arrToDict(keyArr, valArr, Optional ByVal isReversed As Boolean = False,
         If isReversed Then
             For i = UBound(keyArr) To LBound(keyArr) Step -1
                 If Len(Trim(CStr(keyArr(i)))) > 0 Then
-                    res(IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i))) = valArr(UBound(valArr) + i - UBound(keyArr))
+                    res.add IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i)), valArr(UBound(valArr) + i - UBound(valArr))
                 End If
             Next i
         Else
             For i = LBound(keyArr) To UBound(keyArr)
                 If Len(Trim(CStr(keyArr(i)))) > 0 Then
-                    res(IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i))) = valArr(LBound(valArr) + i - LBound(keyArr))
+                   res.add IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i)), valArr(LBound(valArr) + i - LBound(valArr))
                 End If
             Next i
         End If
@@ -638,21 +644,21 @@ Public Function frequencyCount(ByRef rng) As Dicts
 
     If Not IsArray(rng) Then
         For Each k In rng.Cells
-            If Len(Trim(CStr(k.Value))) > 0 Then
+            If Len(k.Value) > 0 Then
                 If res.exists(k.Value) Then
-                    res.dict(CStr(k.Value)) = res.dict(CStr(k.Value)) + 1
+                    res.dict(k.Value) = res.dict(k.Value) + 1
                 Else
-                    res.dict(CStr(k.Value)) = 1
+                    res.dict(k.Value) = 1
                 End If
             End If
         Next k
     Else
          For Each k In rng
-            If Len(Trim(CStr(k))) > 0 Then
+            If Len(k) > 0 Then
                 If res.exists(k) Then
-                    res.dict(CStr(k)) = res.dict(CStr(k)) + 1
+                    res.dict(k) = res.dict(k) + 1
                 Else
-                    res.dict(CStr(k)) = 1
+                    res.dict(k) = 1
                 End If
             End If
         Next k
@@ -917,10 +923,6 @@ End Function
 Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal reduceWith As Long = ProcessWith.Value) As Variant
      Dim l As New Lists
      
-     If Len(reduceValRangeOp) > 0 Then
-        reduceWith = ProcessWith.RangedValue
-     End If
-     
      If reduceWith = ProcessWith.Value Then
         reduce = l.addAll(Me.valsArr).reduce(operation, initialVal, placeholder, placeholderInitialVal, replaceDecimalPoint)
      ElseIf reduceWith = ProcessWith.Key Then
@@ -935,9 +937,7 @@ Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, O
 End Function
 
 Public Function reduceKey(ByVal operation As String, ByVal initialVal As Variant, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal reduceWith As Long = ProcessWith.Value) As Variant
-    
-    Set reduceKey = reduce(operation, initialVal, placeholder, placeholderInitialVal, replaceDecimalPoint, ProcessWith.Key)
-
+     reduceKey = reduce(operation, initialVal, placeholder, placeholderInitialVal, replaceDecimalPoint, ProcessWith.Key)
 End Function
 
 Public Function reduceRngVertical(Optional ByVal operation As String = "?+_", Optional ByVal initialVal As Variant = 0, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True) As Lists
@@ -1066,8 +1066,6 @@ End Function
 Public Function filterKey(ByVal operation, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo As Variant = 0) As Dicts
     Set filterKey = filter(operation, placeholder, idx, replaceDecimalPoint, setNullValTo, ProcessWith.Key)
 End Function
- 
-
 
 Public Function groupBy(ByRef attr, ByVal valCol As Long, Optional ByVal aggregateBy = xlSum) As Dicts
         
@@ -1095,7 +1093,7 @@ Public Function groupBy(ByRef attr, ByVal valCol As Long, Optional ByVal aggrega
 
     
     ' get value array where the aggregate method to be operated on
-    Dim valArr
+    Dim valArr()
     valArr = pList.getVal(valCol).toArray
     
     ' extract target attributes specified in the attr
@@ -1108,7 +1106,7 @@ Public Function groupBy(ByRef attr, ByVal valCol As Long, Optional ByVal aggrega
     Set pList = nl.zipMe
     Set nl = Nothing
     
-    Dim k, i, arr, e
+    Dim k, i, arr(), e
     Dim parent As Dicts
     Dim ub As Long
     Dim cnt As Long
@@ -1158,12 +1156,20 @@ Public Function groupBy(ByRef attr, ByVal valCol As Long, Optional ByVal aggrega
     pList.clear
     Set nl = Nothing
     Set res = Nothing
+    Set parent = Nothing
+    Erase valArr
+    Erase arr
+    
 End Function
 
-Public Function groupByLabel(ByVal attr, Optional ByVal valCol As String = "value", Optional ByVal aggregateBy = xlSum) As Dicts
+Public Function groupByLabel(attr, Optional ByVal valCol As String = "value", Optional ByVal aggregateBy = xlSum) As Dicts
         
     If Not pIsLabeled Then
         Err.Raise 9994, , "attribute labels should be specified!"
+    End If
+    
+    If Not IsArray(attr) Then
+        Err.Raise 9704, , "ParameterTypeError, attr as Array expected, " & TypeName(attr) & " provided."
     End If
     
     Dim k
@@ -1184,13 +1190,14 @@ Public Function groupByLabel(ByVal attr, Optional ByVal valCol As String = "valu
     
     Set groupByLabel = res
     Set res = Nothing
+    Erase attrCol
         
 End Function
 
 ' search for the sub-dicts through the array content
 Private Function cascading(ByRef dict As Dicts, arr) As Dicts
     Dim e
-    Dim tmp
+    Dim tmp As Dicts
     Set tmp = dict
     
     For Each e In arr
@@ -1198,6 +1205,7 @@ Private Function cascading(ByRef dict As Dicts, arr) As Dicts
     Next e
     
     Set cascading = tmp
+    Set tmp = Nothing
 End Function
 
 ''''''''''''
@@ -1227,8 +1235,8 @@ Public Function updateFromArray(ByVal arr, Optional ByVal updateWith As Long = P
     End If
     
     Set updateFromArray = res
-    keyArr = Array()
-    valArr = Array()
+    Erase keyArr
+    Erase valArr
     Set l = Nothing
     Set res = Nothing
 
