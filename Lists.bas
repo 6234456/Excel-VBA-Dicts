@@ -1,7 +1,7 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
-'@lastUpdate                               28.08.2018
+'@lastUpdate                               29.08.2018
 '                                          integrate with Dicts
 '                                          minor bug-fix
 '@TODO                                     optional params
@@ -184,7 +184,6 @@ Public Function toRng(ByRef rng As Range)
             rng.Resize(1, pArr(0).length).Value = Me.toArray
         Else
             Dim lenArr As New Lists
-            lenArr.init
             
             Dim i
             For i = 0 To pLen - 1
@@ -234,7 +233,7 @@ Public Function fromArray(arr, Optional ByVal iter As Boolean = True) As Lists
 
 End Function
 
-Private Function fromSerial(ByVal start As Long, ByVal ending As Long, Optional ByVal steps As Long = 1) As Variant
+Private Function serial(ByVal start As Long, ByVal ending As Long, Optional ByVal steps As Long = 1) As Variant
     Dim res()
     Dim cnt As Long
     cnt = -1
@@ -256,19 +255,19 @@ Private Function fromSerial(ByVal start As Long, ByVal ending As Long, Optional 
         Next i
     End If
     
-    fromSerial = res
+    serial = res
 End Function
 
-Public Function serial(ByVal start As Long, ByVal ending As Long, Optional ByVal steps As Long = 1) As Lists
+Public Function fromSerial(ByVal start As Long, ByVal ending As Long, Optional ByVal steps As Long = 1) As Lists
     
     Me.clear
     
-    Set serial = Me.addAll(fromSerial(start, ending, steps))
+    Set fromSerial = Me.addAll(serial(start, ending, steps))
 End Function
 
 Public Function ones(ByVal n As Long) As Lists
     
-    Set ones = Me.serial(1, n).map("_/({i}+1)")
+    Set ones = Me.fromSerial(1, n).map("_/({i}+1)")
     
 End Function
 
@@ -648,8 +647,6 @@ Public Function some(ByVal judgement As String, Optional ByVal placeholder As St
     some = res
 
 End Function
-
-
 
 ''''''''''''
 '@param     operation:              string to be evaluated, e.g. _*2 will be interpreated as ele * 2
