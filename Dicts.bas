@@ -1,7 +1,7 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
-'@lastUpdate                               28.08.2018
+'@lastUpdate                               29.08.2018
 '                                          code refactor
 '                                          integrate load/reduce/map/filter into single function
 '                                          new feature: load horizontally: loadH
@@ -80,6 +80,18 @@ Public Property Let label(ByVal rng As Variant)
     setLabel rng
 End Property
 
+Public Function hasLabel() As Boolean
+    hasLabel = pIsLabeled
+End Function
+
+Public Function copyLabel(ByRef src As Dicts, ByRef targ As Dicts)
+    If src.hasLabel Then
+        targ.label = src.label
+    Else
+        targ.label = Nothing
+    End If
+End Function
+
 '''''''''''
 '@desc:     set the column/row labels to the underlying Dicts
 '@return:   this Dicts
@@ -87,45 +99,40 @@ End Property
 '''''''''''
 Public Function setLabel(ByVal rng As Variant) As Dicts
    
-   On Error GoTo namedArrayHdl
-   
-   Dim s As String
-   Dim c
-   Dim cnt As Long
-   
-   cnt = 0
-   
-   Dim d As New Dicts
-   
-   ' test if rng is a Range-Object
-   s = rng.Address
-   
-namedArrayHdl:
-
-    ' if rng is a Range-Object
-    If Err.Number = 0 Then
-        For Each c In rng.Cells
-            d.dict(Trim(CStr(c.Value))) = cnt
-            cnt = cnt + 1
-        Next c
+   If isInstanceOf(rng, "Nothing") Then
+        pIsLabeled = False
+        Set pLabeledArray = Nothing
+   Else
         
-        Me.setLabel d
-    Else
-        'if rng is a Dicts-Object
-        If isDict(rng) Then
-            Set pLabeledArray = rng
-        ElseIf IsArray(rng) Then
-            Dim k
-            
-            For k = 0 To UBound(rng) - LBound(rng)
-                d.dict(rng(k)) = k
-            Next k
-            
-            Me.setLabel d
-        End If
-    End If
-    
-   pIsLabeled = True
+        Dim c
+        Dim cnt As Long
+        cnt = 0
+        
+        Dim d As New Dicts
+        
+        If isInstanceOf(rng, "Range") Then
+             For Each c In rng.Cells
+                 d.dict(Trim(CStr(c.Value))) = cnt
+                 cnt = cnt + 1
+             Next c
+             
+             Me.setLabel d
+         Else
+             If isDict(rng) Then
+                 Set pLabeledArray = rng
+             ElseIf IsArray(rng) Then
+                 Dim k
+                 
+                 For k = 0 To UBound(rng) - LBound(rng)
+                     d.dict(rng(k)) = k
+                 Next k
+                 
+                 Me.setLabel d
+             End If
+         End If
+         
+        pIsLabeled = True
+   End If
    
    Set setLabel = Me
    
@@ -822,9 +829,14 @@ End Function
 Public Function sliceWithLabel(ByVal nm As String) As Dicts
     If pIsLabeled Then
         Dim i As Long
+        Dim res As Dicts
         i = pLabeledArray.dict(nm)
         
-        Set sliceWithLabel = Me.ranged("{i}=" & i, aggregate:=AggregateMethod.Aggfilter)
+        Set res = Me.ranged("{i}=" & i, aggregate:=AggregateMethod.Aggfilter)
+        res.setLabel Array(nm)
+        
+        Set sliceWithLabel = res
+        Set res = Nothing
     Else
         Set sliceWithLabel = Nothing
     End If
@@ -846,6 +858,8 @@ Public Function diff(ByVal dict2 As Dicts) As Dicts
         End If
     Next k
     
+    copyLabel Me, res
+    
     Set diff = res
     Set res = Nothing
 End Function
@@ -866,6 +880,8 @@ Public Function union(dict2 As Dicts, Optional ByVal keepOriginalVal As Boolean 
         End If
     Next k
     
+    copyLabel Me, res
+    
     Set union = res
     Set res = Nothing
 End Function
@@ -884,6 +900,8 @@ Public Function intersect(ByRef dict2 As Dicts, Optional ByVal keepOriginalVal A
             End If
         End If
     Next k
+    
+    copyLabel Me, res
     
     Set intersect = res
     Set res = Nothing
@@ -914,6 +932,12 @@ Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, O
      End If
      
      Set l = Nothing
+End Function
+
+Public Function reduceKey(ByVal operation As String, ByVal initialVal As Variant, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal reduceWith As Long = ProcessWith.Value) As Variant
+    
+    Set reduceKey = reduce(operation, initialVal, placeholder, placeholderInitialVal, replaceDecimalPoint, ProcessWith.Key)
+
 End Function
 
 Public Function reduceRngVertical(Optional ByVal operation As String = "?+_", Optional ByVal initialVal As Variant = 0, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True) As Lists
@@ -967,6 +991,9 @@ Public Function map(ByVal operation, Optional ByVal placeholder As String = "_",
      Set l = Nothing
 End Function
 
+Public Function mapKey(ByVal operation, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0) As Dicts
+     Set mapKey = map(operation, placeholder, idx, replaceDecimalPoint, setNullValTo, ProcessWith.Key)
+End Function
 
 Public Function ranged(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0, Optional ByVal initialVal As Variant = 0, Optional ByVal aggregate As Long = AggregateMethod.AggReduce) As Dicts
     
@@ -994,7 +1021,6 @@ Public Function ranged(ByVal operation As String, Optional ByVal placeholder As 
     Set res = Nothing
     Set l = Nothing
 End Function
-
 
 Public Function filter(ByVal operation, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo As Variant = 0, Optional ByVal filterWith As Long = ProcessWith.Value) As Dicts
      
@@ -1036,6 +1062,11 @@ Public Function filter(ByVal operation, Optional ByVal placeholder As String = "
      Set l = Nothing
      Set tmp = Nothing
 End Function
+
+Public Function filterKey(ByVal operation, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo As Variant = 0) As Dicts
+    Set filterKey = filter(operation, placeholder, idx, replaceDecimalPoint, setNullValTo, ProcessWith.Key)
+End Function
+ 
 
 
 Public Function groupBy(ByRef attr, ByVal valCol As Long, Optional ByVal aggregateBy = xlSum) As Dicts
@@ -1129,7 +1160,7 @@ Public Function groupBy(ByRef attr, ByVal valCol As Long, Optional ByVal aggrega
     Set res = Nothing
 End Function
 
-Public Function groupByLabel(ByVal attr, ByVal valCol As String, Optional ByVal aggregateBy = xlSum) As Dicts
+Public Function groupByLabel(ByVal attr, Optional ByVal valCol As String = "value", Optional ByVal aggregateBy = xlSum) As Dicts
         
     If Not pIsLabeled Then
         Err.Raise 9994, , "attribute labels should be specified!"
@@ -1147,7 +1178,12 @@ Public Function groupByLabel(ByVal attr, ByVal valCol As String, Optional ByVal 
         attrCol(k) = pLabeledArray.dict(attr(k + LBound(attr)))
     Next k
     
-    Set groupByLabel = groupBy(attrCol, col, aggregateBy)
+    Dim res As Dicts
+    Set res = groupBy(attrCol, col, aggregateBy)
+    res.setLabel attr
+    
+    Set groupByLabel = res
+    Set res = Nothing
         
 End Function
 
@@ -1218,7 +1254,9 @@ Public Function sort(Optional ByVal isAscending As Boolean = True, Optional ByVa
             res.dict.add l.getVal(i), Me.dict(l.getVal(i))
         End If
     Next i
-
+    
+    copyLabel Me, res
+    
     Set sort = res
     Set res = Nothing
     Set l = Nothing
@@ -1299,26 +1337,62 @@ Public Function x_toString(x As Variant, Optional ByVal lvl As Integer = 0) As S
 End Function
 
 Public Function pk()
-
     Dim k
     For Each k In Me.dict.keys
         Debug.Print k
     Next k
+End Function
 
+Private Function getLabeledSubDict(k) As Dicts
+    
+    If pDict.exists(k) Then
+        If Me.hasLabel Then
+        
+            Dim res As Dicts
+            Set res = pDict(k)
+            res.label = pList.addAll(Me.label.keysArr, False).drop(1).toDict
+            
+            Set getLabeledSubDict = res
+            Set res = Nothing
+            pList.clear
+        Else
+            Set getLabeledSubDict = pDict(k)
+        End If
+    Else
+        Set getLabeledSubDict = Nothing
+    End If
+    
 End Function
 
 
-Public Function toJSON(Optional ByVal k As String = "root") As String
+Public Function toJSON(Optional ByVal label As String = "", Optional ByVal lvl As Long = 0) As String
+    
+    If Len(label) = 0 Then
+        If pIsLabeled Then
+            label = Me.label.keysArr(0)
+        Else
+            label = "root"
+        End If
+    End If
+
     Dim res As String
-    res = "{""name"":""" & k & """," & Chr(13)
-    res = res & """children"":[" & Chr(13)
+    res = String(lvl, Chr(9)) & "{""name"":""" & label & """," & Chr(13)
+    res = res & String(lvl, Chr(9)) & """children"":[" & Chr(13)
     
     Dim ky
     For Each ky In pDict.keys
-        res = res & "{""name"":""" & Replace(CStr(ky), """", "") & """, " & """size"": " & Replace(CStr(pDict(ky)), ",", ".") & "}," & Chr(13)
+        If isDict(pDict(ky)) Then
+            If pIsLabeled Then
+                res = res & getLabeledSubDict(ky).toJSON(ky, lvl + 1) & "," & Chr(13)
+            Else
+                res = res & pDict(ky).toJSON(ky, lvl + 1) & "," & Chr(13)
+            End If
+        Else
+            res = res & String(lvl + 1, Chr(9)) & "{""name"":""" & Replace(CStr(ky), """", "") & """, " & """value"": " & Replace(CStr(pDict(ky)), ",", ".") & "}," & Chr(13)
+        End If
     Next ky
     
-    toJSON = Left(res, Len(res) - 2) & Chr(13) & "]}"
+    toJSON = Left(res, Len(res) - 2) & Chr(13) & String(lvl, Chr(9)) & "]}"
     
 End Function
 
@@ -1350,7 +1424,17 @@ Public Function reg(ByVal pattern As String, Optional ByVal flag As String) As O
 End Function
 
 ' return a consective sequence of the integer numbers
-Public Function rng(ByVal start As Long, ByVal ending As Long, Optional ByVal steps As Long = 1)
+' start/ending can be column label in string
+Public Function rng(ByVal start, ByVal ending, Optional ByVal steps As Long = 1)
+
+    If isInstanceOf(start, "String") Then
+        start = letterToColNum(start)
+    End If
+    
+     If isInstanceOf(ending, "String") Then
+        ending = letterToColNum(ending)
+    End If
+
     Dim res()
     Dim cnt As Long
     cnt = -1
@@ -1383,4 +1467,43 @@ End Function
 
 Public Function isDict(testObj As Variant) As Boolean
    isDict = TypeName(testObj) = "Dicts"
+End Function
+
+Public Function isInstanceOf(testObj, typeArr) As Boolean
+    Dim s As String
+    s = TypeName(testObj)
+    
+    If TypeName(typeArr) = "String" Then
+        isInstanceOf = s = typeArr
+    ElseIf IsArray(typeArr) Then
+        Dim k
+        
+        Dim res As Boolean
+        res = False
+        
+        For Each k In typeArr
+            If s = k Then
+                res = True
+                Exit For
+            End If
+        Next k
+        isInstanceOf = res
+        
+    ElseIf isInstanceOf(typeArr, "Lists") Then
+        isInstanceOf = isInstanceOf(testObj, typeArr.toArray)
+    Else
+        Err.Raise 9980, , "ParameterTypeErrorException: typeArr should be either String, Array or Lists"
+    End If
+End Function
+
+Public Function withSameType(obj1, obj2) As Boolean
+
+    withSameType = TypeName(obj1) = TypeName(obj2)
+    
+End Function
+
+Public Function letterToColNum(ByVal l As String) As Integer
+    
+    letterToColNum = Range(l & "1").Column
+    
 End Function
