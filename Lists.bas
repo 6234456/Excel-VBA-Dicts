@@ -12,7 +12,7 @@
 Option Explicit
 
 
-Private pArr()              ' the underlying array object
+Private pArr() As Variant   ' the underlying array object
 Private pMaxLen As Integer  ' the maximal length of array object
 Private pLen As Integer     ' the length of current List Object
 
@@ -57,7 +57,7 @@ Private Sub Class_Initialize()
 End Sub
 
 Private Sub Class_Terminate()
-
+    Erase pArr
 End Sub
 
 Private Sub check()
@@ -271,7 +271,7 @@ Public Function ones(ByVal n As Long) As Lists
     
 End Function
 
-Public Function add(ByVal ele, Optional ByVal keepOldElements As Boolean = True) As Lists
+Public Function add(ele, Optional ByVal keepOldElements As Boolean = True) As Lists
    
     Call check
     
@@ -331,7 +331,7 @@ Public Function replaceAllAt(ByVal eles, ByVal index As Integer) As Lists
     Set replaceAllAt = Me
 End Function
 
-Public Function addAll(ByVal arr, Optional ByVal keepOldElements As Boolean = True) As Lists
+Public Function addAll(arr, Optional ByVal keepOldElements As Boolean = True) As Lists
 
     If Not keepOldElements Then
         Me.clear
@@ -788,7 +788,7 @@ Public Function judgeReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        res.add reg.test(Me.getVal(i))
+        res.add reg.Test(Me.getVal(i))
     Next i
     
     Set judgeReg = res
@@ -801,7 +801,7 @@ Public Function mapReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        If reg.test(Me.getVal(i)) Then
+        If reg.Test(Me.getVal(i)) Then
             res.add reg.Execute(Me.getVal(i))(0).submatches(0)
         Else
             res.add Me.getVal(i)
