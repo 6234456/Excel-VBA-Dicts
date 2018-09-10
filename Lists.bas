@@ -1,9 +1,9 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
-'@lastUpdate                               29.08.2018
-'                                          integrate with Dicts
-'                                          minor bug-fix
+'@lastUpdate                               10.09.2018
+'                                          add subgroupBy
+'
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -148,16 +148,16 @@ Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String
     Dim i
     
     If rowNum = 1 Or colNum = 1 Then
-        res.addAll rng.Value
+        res.addAll rng.value
     Else
         Dim tmp As New Lists
         
         For i = 1 To rowNum
             tmp.init
-            If IsArray(rng.Rows(i).Value) Then
-                tmp.add rng.Rows(i).Value
+            If IsArray(rng.Rows(i).value) Then
+                tmp.add rng.Rows(i).value
             Else
-                tmp.addAll rng.Rows(i).Value
+                tmp.addAll rng.Rows(i).value
             End If
             
             res.add tmp
@@ -181,7 +181,7 @@ Public Function toRng(ByRef rng As Range)
         y = pLen
         
         If y = 1 Then
-            rng.Resize(1, pArr(0).length).Value = Me.toArray
+            rng.Resize(1, pArr(0).length).value = Me.toArray
         Else
             Dim lenArr As New Lists
             
@@ -201,9 +201,9 @@ Public Function toRng(ByRef rng As Range)
             
             For i = 0 To pLen - 1
                 If isInstance(pArr(i), "Lists") Then
-                    rng.Offset(i, 0).Resize(1, pArr(i).length).Value = pArr(i).toArray
+                    rng.offSet(i, 0).Resize(1, pArr(i).length).value = pArr(i).toArray
                 Else
-                    rng.Offset(i, 0).Value = pArr(i)
+                    rng.offSet(i, 0).value = pArr(i)
                 End If
             Next i
         End If
@@ -457,7 +457,7 @@ Public Function zipMe() As Lists
             lenArr.add pArr(i).length
         Next i
         
-        For j = 0 To lenArr.min - 1
+        For j = 0 To lenArr.min_ - 1
             Dim tmp As New Lists
             tmp.init
             
@@ -525,12 +525,49 @@ Public Function indexOf(ByVal ele) As Integer
     End If
 End Function
 
+' l the length of the subgroups
+' offSet from the first beginnig to next beginning
+' sobgroupBy(2,3)  [1,2,3,4,5] ->  [[1, 2], [4, 5] ]  [[i0, i1, ...i(l-1)], [i(0 + offset), i(1 + offset), ... i(l-1+offset)]]
+Public Function subgroupBy(l As Long, offSet As Long) As Lists
+    Dim res As New Lists
+    Dim tmp As Lists
+    
+    Dim cnt As Long
+    cnt = 0
+    
+    Do While True
+        Set tmp = Me.slice(min__(offSet * cnt, Me.length), min__(l + offSet * cnt, Me.length))
+        If tmp.length = 0 Then
+            Exit Do
+        End If
+        res.add tmp
+        cnt = cnt + 1
+    Loop
+
+    Set subgroupBy = res
+    Set res = Nothing
+    Set tmp = Nothing
+    
+End Function
+
+Private Function min__(a, b) As Variant
+
+    min__ = IIf(a > b, b, a)
+
+End Function
+
+Private Function max__(a, b) As Variant
+
+    max__ = IIf(a > b, a, b)
+
+End Function
+
 Public Function contains(ByVal ele) As Boolean
     contains = Me.indexOf(ele) > -1
 End Function
 
 
-Public Function min() As Variant
+Public Function min_() As Variant
     Dim res
     res = pArr(0)
     
@@ -542,10 +579,10 @@ Public Function min() As Variant
         End If
     Next i
     
-    min = res
+    min_ = res
 End Function
 
-Public Function max() As Variant
+Public Function max_() As Variant
     Dim res
     res = pArr(0)
     
@@ -557,7 +594,7 @@ Public Function max() As Variant
         End If
     Next i
     
-    max = res
+    max_ = res
 End Function
 
 Public Function avg() As Double
@@ -747,12 +784,12 @@ End Function
 
 Public Function take(ByVal n As Long) As Lists
     n = IIf(n >= 0, n, Me.length + n)
-    Set take = Me.filter("{i}<" & n)
+    Set take = Me.slice(0, n, 1) ' Me.filter("{i}<" & n)
 End Function
 
 Public Function drop(ByVal n As Long) As Lists
     n = IIf(n >= 0, n, Me.length + n)
-    Set drop = Me.filter("{i}>=" & n)
+    Set drop = Me.slice(n, , 1)  ' Me.filter("{i}>=" & n)
 End Function
 
 Public Function filterWith(arr As Variant) As Lists
