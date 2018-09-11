@@ -2,7 +2,7 @@
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
 '@lastUpdate                               10.09.2018
-'                                          add subgroupBy
+'                                          add subgroupBy / minor bugfix
 '
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -195,7 +195,7 @@ Public Function toRng(ByRef rng As Range)
             Next i
             
             Dim maxLen As Integer
-            maxLen = lenArr.max
+            maxLen = lenArr.max_
             
             rng.Resize(1, maxLen).Cells.clear
             
@@ -210,6 +210,7 @@ Public Function toRng(ByRef rng As Range)
     End If
     
 End Function
+
 
 Public Function fromArray(arr, Optional ByVal iter As Boolean = True) As Lists
     Dim l As New Lists
@@ -340,8 +341,8 @@ Public Function addAll(arr, Optional ByVal keepOldElements As Boolean = True) As
     Dim i
 
     If isInstance(arr, "Lists") Then
-        For Each i In arr.toArray
-            Me.add i
+        For i = 0 To arr.length - 1
+            Me.add arr.getVal(i)
         Next i
     ElseIf IsArray(arr) Then
         If Not isArrayEmpty(arr) Then
@@ -825,7 +826,7 @@ Public Function judgeReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        res.add reg.Test(Me.getVal(i))
+        res.add reg.test(Me.getVal(i))
     Next i
     
     Set judgeReg = res
@@ -838,7 +839,7 @@ Public Function mapReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        If reg.Test(Me.getVal(i)) Then
+        If reg.test(Me.getVal(i)) Then
             res.add reg.Execute(Me.getVal(i))(0).submatches(0)
         Else
             res.add Me.getVal(i)
@@ -908,7 +909,7 @@ Public Function product(ByVal operation As String, ByRef list2 As Lists, Optiona
     cnt = 0
     
     Dim targLen As Integer
-    targLen = Application.WorksheetFunction.min(pLen, list2.length) - 1
+    targLen = min__(pLen, list2.length) - 1
     
     If replaceDecimalPoint Then
         For i = 0 To targLen
