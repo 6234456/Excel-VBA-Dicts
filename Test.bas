@@ -29,20 +29,42 @@ Sub Test()
         Debug.Assert .map("_+6").valsArr(0) = 6
         
         Debug.Assert .diff(l.fromSerial(-10, 8).toDict).reduceKey("_+?", 0) = 19
-
     End With
+    
+    Dim l2 As New Lists
+    l.clear
+    l.add l2
+    l2.add d
+    Debug.Assert TypeName(l.getVal(0, 0)) = "Dicts"
+    
+    l.clear
+    Debug.Assert l.of(1, 2, 3, 4, 5, Array(1, 2, 3)).length = 6
+    
+    Debug.Assert l.fromSerial(10, 15).mapX("test.callback").slice(-1).getVal(0) = "225_"
+    
+    Debug.Assert l.fromSerial(1, 10).subgroupBy(2, 2).mapX("m").reduce("_+?", 0) = 10
+    
+    Debug.Assert l.fromSerial(10, 15).filterX("f").length = 0
+    
+    Debug.Assert l.fromSerial(10, 15).reduceX("test.r", New Dicts).count = 6
     
     Debug.Print "All tests passed!"
     
 End Sub
 
 
-Sub TestShtIO()
-    
-    Dim d As New Dicts
-    
-    With d.load("1", 1, d.rng("B", "J"), 2).setLabel(Worksheets("1").Range("B1:J1"))
-        .groupByLabel(Array("location", "resp", "cate")).dump "3"
-    End With
-    
+Private Sub callback(ByRef l As Lists, e, Optional ByVal i As Long)
+    l.callback = e ^ 2 & "_"
+End Sub
+
+Private Sub f(ByRef l As Lists, e, Optional ByVal i As Long)
+    l.callback = i > 15
+End Sub
+
+Private Sub r(ByRef l As Lists, e, Optional ByVal i As Long)
+    l.callback.dict.add e, 1
+End Sub
+
+Private Sub m(ByRef l As Lists, e, Optional ByVal i As Long)
+    l.callback = e.length
 End Sub
