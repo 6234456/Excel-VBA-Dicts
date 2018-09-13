@@ -3,7 +3,7 @@
 '@author                                   Qiou Yang
 '@lastUpdate                               10.09.2018
 '                                          add subgroupBy / minor bugfix
-'
+'                                          update mapX / reduceX / filterX with application.run
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -16,6 +16,23 @@ Private pArr() As Variant   ' the underlying array object
 Private pMaxLen As Integer  ' the maximal length of array object
 Private pLen As Integer     ' the length of current List Object
 
+Private pRes                ' res for the callback map/reduce/filter
+
+Public Property Let callback(res)
+    If IsObject(res) Then
+        Set pRes = res
+    Else
+        pRes = res
+    End If
+End Property
+
+Public Property Get callback()
+    If IsObject(pRes) Then
+        Set callback = pRes
+    Else
+        callback = pRes
+    End If
+End Property
 
 Public Property Get length() As Integer
     length = pLen
@@ -47,7 +64,6 @@ Public Function toDict() As Dicts
 
 End Function
 
-
 Public Function clear() As Lists
     Me.init
 End Function
@@ -75,7 +91,6 @@ Private Sub override(ByRef list As Lists)
 End Sub
 
 Public Function isEmptyList() As Boolean
-    
     isEmptyList = True
     
     Dim i
@@ -85,35 +100,10 @@ Public Function isEmptyList() As Boolean
             Exit For
         End If
     Next i
-
 End Function
 
 Private Function isInstance(obj, ByVal sign) As Boolean
-    On Error GoTo listhandler
-    
-    Dim res As Boolean
-    res = False
-    
-    Dim myType As String
-    myType = obj.sign
-    
-listhandler:
-    If Err.Number = 0 Then
-        If Not IsArray(sign) Then
-            res = (myType = sign)
-        Else
-            Dim e
-    
-            For Each e In sign
-                If e = myType Then
-                    res = True
-                    Exit For
-                End If
-            Next e
-        End If
-    End If
-    
-    isInstance = res
+    isInstance = TypeName(obj) = sign
 End Function
 
 Public Function isLists(testObj As Variant) As Boolean
@@ -280,7 +270,7 @@ Public Function add(ele, Optional ByVal keepOldElements As Boolean = True) As Li
         Me.clear
     End If
     
-    If isObj(ele) Then
+    If IsObject(ele) Then
         Set pArr(pLen) = ele
     Else
         pArr(pLen) = ele
@@ -387,6 +377,18 @@ Public Function addList(ByRef l As Lists) As Lists
     Set addList = Me
 End Function
 
+Public Function of(ParamArray l() As Variant) As Lists
+    Dim tmp
+    Dim res As New Lists
+    
+    For Each tmp In l
+        res.add tmp
+    Next tmp
+    
+    Set of = res
+    Set res = Nothing
+End Function
+
 Public Function zip(ParamArray l() As Variant) As Lists
     Dim res As New Lists
     
@@ -474,31 +476,34 @@ Public Function zipMe() As Lists
     End If
 End Function
 
-Public Function getVal(ByVal index As Integer, Optional ByVal index2) As Variant
+Public Function getVal(ByVal index As Integer, Optional ByVal index2)
     If index >= pLen Or index < 0 Then
         Err.Raise 8888, , "ArrayIndexOutOfBoundException"
     End If
     
     
-    If Not isObj(pArr(index)) Then
+    If Not IsObject(pArr(index)) Then
         getVal = pArr(index)
     Else
         If IsMissing(index2) Then
             Set getVal = pArr(index)
         Else
-            getVal = pArr(index).getVal(index2)
+            If IsObject(pArr(index).getVal(index2)) Then
+                Set getVal = pArr(index).getVal(index2)
+            Else
+                getVal = pArr(index).getVal(index2)
+            End If
         End If
     End If
 
 End Function
-
 
 Public Function setVal(ByVal index As Integer, ByVal ele As Variant) As Lists
     If index >= pLen Or index < 0 Then
         Err.Raise 8888, , "ArrayIndexOutOfBoundException"
     End If
     
-    If isObj(ele) Then
+    If IsObject(ele) Then
         Set pArr(index) = ele
     Else
         pArr(index) = ele
@@ -696,7 +701,6 @@ Public Function map(ByVal operation As String, Optional ByVal placeholder As Str
     
     Dim res As New Lists
     
-    
     Dim i
     Dim cnt As Long
     cnt = 0
@@ -716,10 +720,28 @@ Public Function map(ByVal operation As String, Optional ByVal placeholder As Str
     End If
     
     Set map = res
+    Set res = Nothing
+End Function
+
+
+' signature of callback should be,
+' sub callback(byref l as Lists, e, optional byval i as Long)
+' update Me.modification
+
+Public Function mapX(Optional ByVal callback As String = "callback") As Lists
+    Dim res As New Lists
+    Dim i
+
+    For i = 0 To Me.length - 1
+        Application.Run callback, Me, Me.getVal(i), i
+        res.add pRes
+    Next i
+    
+    Set mapX = res
+    Set res = Nothing
 End Function
 
 ' first reduce then map
-
 Public Function mapList(ByVal operation As String, ByVal reduceOp As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal initialVal = 1, Optional ByVal placeholderInitialVal As String = "?") As Lists
     Dim res As New Lists
     Dim tmp As New Lists
@@ -783,14 +805,34 @@ Public Function filter(ByVal judgement As String, Optional ByVal placeholder As 
 End Function
 
 
+' signature of callback should be,
+' sub callback_judgement(byref l as Lists, e, optional byval i as Long)
+' update Me.callback
+
+Public Function filterX(Optional ByVal callback As String = "callback") As Lists
+
+    Dim res As New Lists
+    Dim i
+
+    For i = 0 To Me.length - 1
+        Application.Run callback, Me, Me.getVal(i), i
+        If pRes Then
+            res.add Me.getVal(i)
+        End If
+    Next i
+    
+    Set filterX = res
+    Set res = Nothing
+End Function
+
 Public Function take(ByVal n As Long) As Lists
     n = IIf(n >= 0, n, Me.length + n)
-    Set take = Me.slice(0, n, 1) ' Me.filter("{i}<" & n)
+    Set take = Me.slice(0, n, 1)
 End Function
 
 Public Function drop(ByVal n As Long) As Lists
     n = IIf(n >= 0, n, Me.length + n)
-    Set drop = Me.slice(n, , 1)  ' Me.filter("{i}>=" & n)
+    Set drop = Me.slice(n, , 1)
 End Function
 
 Public Function filterWith(arr As Variant) As Lists
@@ -826,7 +868,7 @@ Public Function judgeReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        res.add reg.test(Me.getVal(i))
+        res.add reg.Test(Me.getVal(i))
     Next i
     
     Set judgeReg = res
@@ -839,7 +881,7 @@ Public Function mapReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        If reg.test(Me.getVal(i)) Then
+        If reg.Test(Me.getVal(i)) Then
             res.add reg.Execute(Me.getVal(i))(0).submatches(0)
         Else
             res.add Me.getVal(i)
@@ -852,23 +894,23 @@ End Function
 
 Public Function nullVal(Optional setValTo As Variant) As Lists
     Dim res As New Lists
-    
     Dim i
     
     'setValTo missing, left out empty value
     If IsMissing(setValTo) Then
-        For Each i In Me.toArray
-            If Not IsEmpty(i) Then
-                res.add i
+        For i = 0 To Me.length - 1
+            If Not IsEmpty(Me.getVal(i)) Then
+                res.add Me.getVal(i)
             End If
         Next i
     Else
-        For Each i In Me.toArray
-            res.add IIf(IsEmpty(i), setValTo, i)
+        For i = 0 To Me.length - 1
+            res.add IIf(IsEmpty(Me.getVal(i)), setValTo, Me.getVal(i))
         Next i
     End If
 
     Set nullVal = res
+    Set res = Nothing
 End Function
 
 Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True) As Variant
@@ -893,6 +935,28 @@ Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, O
     End If
     
      reduce = res
+End Function
+
+' signature of callback should be,
+' sub callback(byref l as Lists, e, optional byval i as Long)
+' update Me.modification as acc
+
+Public Function reduceX(Optional ByVal callback As String = "callback", Optional initVal = 0)
+
+    Dim i
+    
+    Me.callback = initVal
+
+    For i = 0 To Me.length - 1
+        Application.Run callback, Me, Me.getVal(i), i
+    Next i
+    
+    If IsObject(pRes) Then
+        Set reduceX = pRes
+    Else
+        reduceX = pRes
+    End If
+    
 End Function
 
 Public Function reduceRight(ByVal operation As String, ByVal initialVal As Variant, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True) As Variant
