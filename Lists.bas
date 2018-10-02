@@ -1,9 +1,9 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
-'@lastUpdate                               10.09.2018
-'                                          add subgroupBy / minor bugfix
-'                                          update mapX / reduceX / filterX with application.run
+'@lastUpdate                               02.10.2018
+'                                          add permutation
+'                                          bugfix toString
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -53,13 +53,26 @@ End Function
 
 Public Function toDict() As Dicts
     Dim res As New Dicts
-    
+  
     Dim i
     For i = 0 To pLen - 1
         res.dict.add Me.getVal(i), i
     Next i
     
     Set toDict = res
+    Set res = Nothing
+
+End Function
+
+Public Function toMap() As Dicts
+    Dim res As New Dicts
+  
+    Dim i
+    For i = 0 To pLen - 1
+        res.dict.add i, Me.getVal(i)
+    Next i
+    
+    Set toMap = res
     Set res = Nothing
 
 End Function
@@ -138,16 +151,16 @@ Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String
     Dim i
     
     If rowNum = 1 Or colNum = 1 Then
-        res.addAll rng.value
+        res.addAll rng.Value
     Else
         Dim tmp As New Lists
         
         For i = 1 To rowNum
             tmp.init
-            If IsArray(rng.Rows(i).value) Then
-                tmp.add rng.Rows(i).value
+            If IsArray(rng.Rows(i).Value) Then
+                tmp.add rng.Rows(i).Value
             Else
-                tmp.addAll rng.Rows(i).value
+                tmp.addAll rng.Rows(i).Value
             End If
             
             res.add tmp
@@ -171,7 +184,7 @@ Public Function toRng(ByRef rng As Range)
         y = pLen
         
         If y = 1 Then
-            rng.Resize(1, pArr(0).length).value = Me.toArray
+            rng.Resize(1, pArr(0).length).Value = Me.toArray
         Else
             Dim lenArr As New Lists
             
@@ -191,16 +204,15 @@ Public Function toRng(ByRef rng As Range)
             
             For i = 0 To pLen - 1
                 If isInstance(pArr(i), "Lists") Then
-                    rng.offSet(i, 0).Resize(1, pArr(i).length).value = pArr(i).toArray
+                    rng.offSet(i, 0).Resize(1, pArr(i).length).Value = pArr(i).toArray
                 Else
-                    rng.offSet(i, 0).value = pArr(i)
+                    rng.offSet(i, 0).Value = pArr(i)
                 End If
             Next i
         End If
     End If
     
 End Function
-
 
 Public Function fromArray(arr, Optional ByVal iter As Boolean = True) As Lists
     Dim l As New Lists
@@ -290,15 +302,12 @@ Public Function remove(ByVal ele) As Lists
 End Function
 
 Public Function removeAt(ByVal index As Integer) As Lists
-    
     Dim res As New Lists
-    
     
     Set res = Me.slice(, index).addList(Me.slice(index + 1))
     Call override(res)
     
     Set removeAt = Me
-
 End Function
 
 Public Function addAt(ByVal ele, ByVal index As Integer) As Lists
@@ -320,6 +329,36 @@ Public Function replaceAllAt(ByVal eles, ByVal index As Integer) As Lists
     Set res = Me.slice(, index).addAll(eles).addList(Me.slice(index + 1))
     Call override(res)
     Set replaceAllAt = Me
+End Function
+
+Public Function unshift(ParamArray l() As Variant) As Lists
+    Set unshift = Me.addAllAt(l, 0)
+End Function
+
+Public Function push(ParamArray l() As Variant) As Lists
+    Set push = Me.addAllAt(l, Me.length)
+End Function
+
+Public Function permutation() As Lists
+    Dim res As New Lists
+
+    If Me.length <= 1 Then
+        res.add Me
+    Else
+        Dim i, j
+        Dim tmp As Lists
+        Dim ele
+        
+        For i = 0 To Me.length - 1
+            Set tmp = Me.copy.removeAt(i).permutation
+            For j = 0 To tmp.length - 1
+                res.add tmp.getVal(j).unshift(Me.getVal(i))
+            Next j
+        Next i
+    End If
+    
+    Set permutation = res
+    
 End Function
 
 Public Function addAll(arr, Optional ByVal keepOldElements As Boolean = True) As Lists
@@ -555,6 +594,8 @@ Public Function subgroupBy(l As Long, offSet As Long) As Lists
     Set tmp = Nothing
     
 End Function
+
+
 
 Private Function min__(a, b) As Variant
 
@@ -1077,14 +1118,12 @@ Public Function toString()
         res = "["
 
         Dim i As Integer
-
        
         For i = 0 To pLen - 1
             If IsArray(pArr(i)) Then
                 Dim t As New Lists
-                t.init
-                res = t.addAll(pArr(i)).toString
-            ElseIf Not isObj(pArr(i)) Then
+                res = res & t.addAll(pArr(i)).toString & ", "
+            ElseIf Not isInstanceOf(pArr(i), Array("Lists", "Dicts")) Then
                 res = res & pArr(i) & ", "
             Else
                 res = res & pArr(i).toString() & ", "
@@ -1094,6 +1133,33 @@ Public Function toString()
         toString = Left(res, Len(res) - 2) & "]"
     End If
    
+End Function
+
+Public Function isInstanceOf(testObj, typeArr) As Boolean
+    Dim s As String
+    s = TypeName(testObj)
+    
+    If TypeName(typeArr) = "String" Then
+        isInstanceOf = s = typeArr
+    ElseIf IsArray(typeArr) Then
+        Dim k
+        
+        Dim res As Boolean
+        res = False
+        
+        For Each k In typeArr
+            If s = k Then
+                res = True
+                Exit For
+            End If
+        Next k
+        isInstanceOf = res
+        
+    ElseIf isInstanceOf(typeArr, "Lists") Then
+        isInstanceOf = isInstanceOf(testObj, typeArr.toArray)
+    Else
+        Err.Raise 9980, , "ParameterTypeErrorException: typeArr should be either String, Array or Lists"
+    End If
 End Function
 
 Public Function sort(Optional ByVal isAscending As Boolean = True) As Lists
