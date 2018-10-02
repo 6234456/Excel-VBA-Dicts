@@ -40,13 +40,17 @@ Sub Test()
     l.clear
     Debug.Assert l.of(1, 2, 3, 4, 5, Array(1, 2, 3)).length = 6
     
-    Debug.Assert l.fromSerial(10, 15).mapX("test.callback").slice(-1).getVal(0) = "225_"
+    Debug.Assert l.fromSerial(10, 15).mapX("Test.callback").slice(-1).getVal(0) = "225_"
     
-    Debug.Assert l.fromSerial(1, 10).subgroupBy(2, 2).mapX("m").reduce("_+?", 0) = 10
+    Debug.Assert l.fromSerial(1, 10).subgroupBy(2, 2).mapX("Test.m").reduce("_+?", 0) = 10
     
-    Debug.Assert l.fromSerial(10, 15).filterX("f").length = 0
+    Debug.Assert l.fromSerial(10, 15).filterX("Test.f").length = 0
     
-    Debug.Assert l.fromSerial(10, 15).reduceX("test.r", New Dicts).count = 6
+    Debug.Assert l.fromSerial(10, 15).reduceX("Test.r", New Dicts).count = 6
+    
+    With l.of(1, 2, 3, 4).permutation
+     Debug.Assert .length = 4 * 3 * 2 * 1
+    End With
     
     Debug.Print "All tests passed!"
     
