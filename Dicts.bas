@@ -1,7 +1,7 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
-'@lastUpdate                               29.08.2018
+'@lastUpdate                               02.10.2018
 '                                          code refactor
 '                                          integrate load/reduce/map/filter into single function
 '                                          new feature: load horizontally: loadH
@@ -66,6 +66,21 @@ End Property
 Public Property Get dict() As Object
     Set dict = pDict
 End Property
+
+Public Function add(k, v) As Dicts
+    
+    If Me.exists(k) Then
+        If IsObject(v) Then
+            Set Me.dict(k) = v
+        Else
+            Me.dict(k) = v
+        End If
+    Else
+        Me.dict.add k, v
+    End If
+    Set add = Me
+    
+End Function
 
 ' get/set column labels
 Public Property Get label() As Dicts
@@ -382,7 +397,7 @@ Public Function rngToAddress(ByRef rng As Range, Optional ByVal withShtName As B
     Set fst = rng.Cells(1, 1)
     
     Dim lst As Range
-    Set lst = fst.Offset(rng.Rows.count - 1, rng.Columns.count - 1)
+    Set lst = fst.offSet(rng.Rows.count - 1, rng.Columns.count - 1)
     
     Dim shtName As String
     Dim wbName As String
