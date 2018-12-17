@@ -1,12 +1,15 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
-'@lastUpdate                               02.10.2018
+'@license                                  MIT
+'@lastUpdate                               17.12.2018
+'                                          add getByLabel
 '                                          code refactor
 '                                          integrate load/reduce/map/filter into single function
 '                                          new feature: load horizontally: loadH
 '                                          new feature: groupBy
 '@TODO                                     add comments
+'                                          unify the Exception-Code
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 ' declaration compulsory
@@ -151,6 +154,31 @@ Public Function setLabel(ByVal rng As Variant) As Dicts
    
    Set setLabel = Me
    
+End Function
+
+'@desc      get element by key and label
+'@return    the target element
+
+Public Function getByLabel(ByRef k As Variant, ByRef label As String) As Variant
+    
+    If Not pIsLabeled Then
+        Err.Raise 99760, , "LabelAbsentException: please specify the label first"
+    End If
+    
+    If Not Me.exists(k) Then
+        Err.Raise 89760, , "ElementNotFoundException: the key does not exist"
+    End If
+    
+    If Not pLabeledArray.exists(label) Then
+        Err.Raise 89760, , "ElementNotFoundException: the label '" & label & "' does not exist"
+    End If
+    
+    If IsObject(pDict(k)(pLabeledArray.dict(label))) Then
+        Set getByLabel = pDict(k)(pLabeledArray.dict(label))
+    Else
+        getByLabel = pDict(k)(pLabeledArray.dict(label))
+    End If
+    
 End Function
 
 ' get length of the key-value pairs
