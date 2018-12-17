@@ -52,6 +52,17 @@ Sub Test()
      Debug.Assert .length = 4 * 3 * 2 * 1
     End With
     
+    d.clear
+    l.clear
+    
+    d.add 1, Array(l.of(1, 2, 3), 2, 3, 4)
+    d.add 2, Array(l.of(2, 2, 3), 2, 3, 4)
+    d.add 3, Array(l.of(3, 2, 3), 2, 3, 4)
+    
+    d.label = Array("index", "a1", "a2", "a3")
+    
+    Debug.Assert d.getByLabel(3, "index").getVal(0) = 3
+    
     Debug.Print "All tests passed!"
     
 End Sub
