@@ -1,8 +1,8 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
-'@lastUpdate                               02.10.2018
-'                                          add permutation
+'@lastUpdate                               27.12.2018
+'                                          add fromString / join
 '                                          bugfix toString
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -212,6 +212,22 @@ Public Function toRng(ByRef rng As Range)
         End If
     End If
     
+End Function
+
+Public Function fromString(ByVal str As String) As Lists
+    Dim l As New Lists
+    
+    Dim i As Integer
+    For i = 1 To Len(str)
+        l.add Mid(str, i, 1)
+    Next i
+    
+    Set fromString = l
+    Set l = Nothing
+End Function
+
+Public Function join(ByVal delimiter As String) As String
+    join = Strings.join(Me.toArray, delimiter)
 End Function
 
 Public Function fromArray(arr, Optional ByVal iter As Boolean = True) As Lists
