@@ -2,7 +2,7 @@
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
 '@lastUpdate                               27.12.2018
-'                                          add fromString / join
+'                                          add fromString / join / dropLast
 '                                          bugfix toString
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -890,6 +890,10 @@ End Function
 Public Function drop(ByVal n As Long) As Lists
     n = IIf(n >= 0, n, Me.length + n)
     Set drop = Me.slice(n, , 1)
+End Function
+
+Public Function dropLast(ByVal n As Long) As Lists
+    Set dropLast = take(Me.length - n)
 End Function
 
 Public Function filterWith(arr As Variant) As Lists
