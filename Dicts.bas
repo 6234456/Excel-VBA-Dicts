@@ -2,12 +2,8 @@
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               17.12.2018
-'                                          add getByLabel
-'                                          code refactor
-'                                          integrate load/reduce/map/filter into single function
-'                                          new feature: load horizontally: loadH
-'                                          new feature: groupBy
+'@lastUpdate                               17.01.2019
+'                                          new feature: sliceWithLabel now supports Array/List as param
 '@TODO                                     add comments
 '                                          unify the Exception-Code
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -598,12 +594,12 @@ End Function
 '           appendMode      keep the old data if evoked multiple times
 '           isVertical      vlook if true
 '''''''''''
-Public Function load(Optional ByVal Sht As String = "", Optional ByVal KeyCol As Long = 1, Optional ByVal valCol = 1, Optional RowBegine As Variant = 1, Optional ByVal RowEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False, Optional ByVal isVertical As Boolean = True) As Dicts
+Public Function load(Optional ByVal sht As String = "", Optional ByVal KeyCol As Long = 1, Optional ByVal valCol = 1, Optional RowBegine As Variant = 1, Optional ByVal RowEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False, Optional ByVal isVertical As Boolean = True) As Dicts
     Dim keyRng As Range
-    Set keyRng = getRange(Sht, KeyCol, KeyCol, RowBegine, RowEnd, wb, isVertical)
+    Set keyRng = getRange(sht, KeyCol, KeyCol, RowBegine, RowEnd, wb, isVertical)
     
     Dim valRng As Range
-    Set valRng = getRange(Sht, KeyCol, valCol, RowBegine, RowEnd, wb, isVertical)
+    Set valRng = getRange(sht, KeyCol, valCol, RowBegine, RowEnd, wb, isVertical)
     
     If pDict.count = 0 Or Not appendMode Then
         Set pDict = rngToDict(keyRng, valRng, Reversed, asAddress)
@@ -617,8 +613,8 @@ Public Function load(Optional ByVal Sht As String = "", Optional ByVal KeyCol As
     Set valRng = Nothing
 End Function
 
-Public Function loadH(Optional ByVal Sht As String = "", Optional ByVal KeyRow As Long = 1, Optional ByVal ValRow = 1, Optional ColBegine As Variant = 1, Optional ByVal ColEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False) As Dicts
-    Set loadH = load(Sht:=Sht, KeyCol:=KeyRow, valCol:=ValRow, RowBegine:=ColBegine, RowEnd:=ColEnd, wb:=wb, Reversed:=Reversed, asAddress:=asAddress, appendMode:=appendMode, isVertical:=False)
+Public Function loadH(Optional ByVal sht As String = "", Optional ByVal KeyRow As Long = 1, Optional ByVal ValRow = 1, Optional ColBegine As Variant = 1, Optional ByVal ColEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False) As Dicts
+    Set loadH = load(sht:=sht, KeyCol:=KeyRow, valCol:=ValRow, RowBegine:=ColBegine, RowEnd:=ColEnd, wb:=wb, Reversed:=Reversed, asAddress:=asAddress, appendMode:=appendMode, isVertical:=False)
 End Function
 
 
@@ -642,9 +638,9 @@ Public Function emptyInstance() As Dicts
 End Function
 
 
-Public Function loadStruct(ByVal Sht As String, ByVal KeyCol1 As Long, ByVal KeyCol2 As Long, ByVal valCol, Optional RowBegine As Variant, Optional ByVal RowEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False) As Dicts
+Public Function loadStruct(ByVal sht As String, ByVal KeyCol1 As Long, ByVal KeyCol2 As Long, ByVal valCol, Optional RowBegine As Variant, Optional ByVal RowEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False) As Dicts
 
-    With getTargetSht(Sht, wb)
+    With getTargetSht(sht, wb)
     
         Dim dict As Object
         Set dict = CreateObject("Scripting.Dictionary")
@@ -668,7 +664,7 @@ Public Function loadStruct(ByVal Sht As String, ByVal KeyCol1 As Long, ByVal Key
         Do While tmpCurrentRow > RowBegine
             tmpCurrentRow = .Cells(tmpCurrentRow, KeyCol1).End(xlUp).row
             
-            Set dict(.Cells(tmpCurrentRow, KeyCol1).Value) = tmpDict.load(Sht, KeyCol2, valCol, tmpCurrentRow + 1, tmpPreviousRow, wb, Reversed)
+            Set dict(.Cells(tmpCurrentRow, KeyCol1).Value) = tmpDict.load(sht, KeyCol2, valCol, tmpCurrentRow + 1, tmpPreviousRow, wb, Reversed)
             Set tmpDict = Nothing
             
             tmpPreviousRow = tmpCurrentRow - 1
@@ -875,14 +871,42 @@ Private Function isDicted_(ByRef obj As Dicts) As Boolean
     
 End Function
 
-Public Function sliceWithLabel(ByVal nm As String) As Dicts
+Public Function sliceWithLabel(nm) As Dicts
     If pIsLabeled Then
-        Dim i As Long
         Dim res As Dicts
-        i = pLabeledArray.dict(nm)
         
-        Set res = Me.ranged("{i}=" & i, aggregate:=AggregateMethod.Aggfilter)
-        res.setLabel Array(nm)
+        If TypeName(nm) = "String" Then
+            Dim i As Long
+            i = pLabeledArray.dict(nm)
+            
+            Set res = Me.ranged("{i}=" & i, aggregate:=AggregateMethod.Aggfilter)
+            res.setLabel Array(nm)
+        ElseIf IsArray(nm) Then
+        
+            Dim idxList As New Lists
+            Dim k
+            Dim d As New Dicts
+            
+            Dim tmp As New Lists
+            
+            For Each k In nm
+                idxList.add pLabeledArray.dict(k)
+            Next k
+            
+            For Each k In Me.keys
+                d.add k, tmp.addAll(Me.dict(k), False).filterIndex(idxList).toArray
+            Next k
+            
+            Set res = d
+            Set d = Nothing
+            Set idxList = Nothing
+            res.setLabel nm
+        ElseIf TypeName(nm) = "Lists" Then
+            Set res = sliceWithLabel(nm.toArray)
+        Else
+            Err.Raise "5678", , "TypeError: the parameter of sliceWithLabel should be either String, Array or Lists. " & TypeName(nm) & "  found."
+        End If
+        
         
         Set sliceWithLabel = res
         Set res = Nothing
@@ -1100,6 +1124,8 @@ Public Function filter(ByVal operation, Optional ByVal placeholder As String = "
      Else
         Err.Raise 8889, , "unknown aggregate parameter"
      End If
+     
+     copyLabel Me, res
      
      Set filter = res
      Set l = Nothing
@@ -1504,12 +1530,12 @@ Public Function rng(ByVal start, ByVal ending, Optional ByVal steps As Long = 1)
     rng = res
 End Function
 
-Public Function y(Optional ByVal Sht As String = "", Optional ByVal col As Long = 1, Optional ByVal wb As Workbook) As Long
-    y = getTargetSht(Sht, wb).Cells(Rows.count, col).End(xlUp).row
+Public Function y(Optional ByVal sht As String = "", Optional ByVal col As Long = 1, Optional ByVal wb As Workbook) As Long
+    y = getTargetSht(sht, wb).Cells(Rows.count, col).End(xlUp).row
 End Function
 
-Public Function x(Optional ByVal Sht As String = "", Optional ByVal row As Long = 1, Optional ByVal wb As Workbook) As Long
-    x = getTargetSht(Sht, wb).Cells(row, Columns.count).End(xlToLeft).Column
+Public Function x(Optional ByVal sht As String = "", Optional ByVal row As Long = 1, Optional ByVal wb As Workbook) As Long
+    x = getTargetSht(sht, wb).Cells(row, Columns.count).End(xlToLeft).Column
 End Function
 
 Private Function IsReg(testObj) As Boolean
