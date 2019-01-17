@@ -1,8 +1,8 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
-'@lastUpdate                               27.12.2018
-'                                          add fromString / join / dropLast
+'@lastUpdate                               27.01.2019
+'                                          add filterIndex
 '                                          bugfix toString
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -894,6 +894,19 @@ End Function
 
 Public Function dropLast(ByVal n As Long) As Lists
     Set dropLast = take(Me.length - n)
+End Function
+
+Public Function filterIndex(indexArr As Variant) As Lists
+    Dim i
+    Dim res As New Lists
+    
+    For Each i In xToArray(indexArr)
+        res.add Me.getVal(i)
+    Next i
+    
+    Set filterIndex = res
+    Set res = Nothing
+
 End Function
 
 Public Function filterWith(arr As Variant) As Lists
