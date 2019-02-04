@@ -1,9 +1,9 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
-'@lastUpdate                               27.01.2019
-'                                          add filterIndex
-'                                          bugfix toString
+'@license                                  MIT
+'@lastUpdate                               04.02.2019
+'                                          bugfix fromRng
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -142,7 +142,6 @@ End Function
 Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String = "v") As Lists
     Dim res As New Lists
     
-    
     Dim rowNum As Integer
     rowNum = rng.Rows.count
     Dim colNum As Integer
@@ -156,18 +155,29 @@ Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String
         Dim tmp As New Lists
         
         For i = 1 To rowNum
-            tmp.init
             res.add tmp.fromRng(rng.Rows(i))
-            Set tmp = Nothing
         Next i
     End If
     
     If orientation = "h" Or orientation = "H" Then
-        Set res = res.zipMe
+        If rowNum = 1 Or colNum = 1 Then
+            Dim res1 As New Lists
+            Dim tmp1 As New Lists
+            
+            For i = 0 To res.length - 1
+                tmp1.init
+                res1.add tmp1.add(res.getVal(i), False)
+                Set tmp1 = Nothing
+            Next i
+            
+            Set res = res1
+            Set res1 = Nothing
+        Else
+            Set res = res.zipMe
+        End If
     End If
-    
-    Call override(res)
-    Set fromRng = Me
+
+    Set fromRng = res
 
 End Function
 
@@ -940,7 +950,7 @@ Public Function judgeReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        res.add reg.Test(Me.getVal(i))
+        res.add reg.test(Me.getVal(i))
     Next i
     
     Set judgeReg = res
@@ -953,7 +963,7 @@ Public Function mapReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        If reg.Test(Me.getVal(i)) Then
+        If reg.test(Me.getVal(i)) Then
             res.add reg.Execute(Me.getVal(i))(0).submatches(0)
         Else
             res.add Me.getVal(i)
