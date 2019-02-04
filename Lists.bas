@@ -151,19 +151,13 @@ Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String
     Dim i
     
     If rowNum = 1 Or colNum = 1 Then
-        res.addAll rng.Value
+        res.addAll rng
     Else
         Dim tmp As New Lists
         
         For i = 1 To rowNum
             tmp.init
-            If IsArray(rng.Rows(i).Value) Then
-                tmp.add rng.Rows(i).Value
-            Else
-                tmp.addAll rng.Rows(i).Value
-            End If
-            
-            res.add tmp
+            res.add tmp.fromRng(rng.Rows(i))
             Set tmp = Nothing
         Next i
     End If
@@ -388,6 +382,10 @@ Public Function addAll(arr, Optional ByVal keepOldElements As Boolean = True) As
     If isInstance(arr, "Lists") Then
         For i = 0 To arr.length - 1
             Me.add arr.getVal(i)
+        Next i
+    ElseIf TypeName(arr) = "Range" Then
+        For Each i In arr.Value
+            Me.add i
         Next i
     ElseIf IsArray(arr) Then
         If Not isArrayEmpty(arr) Then
