@@ -2,8 +2,8 @@
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               17.01.2019
-'                                          new feature: sliceWithLabel now supports Array/List as param
+'@lastUpdate                               04.02.2019
+'                                          new feature: dump now support dump with label
 '@TODO                                     add comments
 '                                          unify the Exception-Code
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -761,7 +761,7 @@ Public Sub unload(ByVal shtName As String, ByVal keyPos As Long, ByVal startingR
 
 End Sub
 
-Public Sub dump(ByVal shtName As String, Optional ByVal keyPos As Long = 1, Optional ByVal startingRow As Long = 1, Optional ByVal startingCol As Long = 2, Optional ByVal endRow As Long, Optional ByVal endCol As Long, Optional ByRef wb As Workbook, Optional ByVal isVertical As Boolean = True, Optional ByVal trailingRows As Long = 0)
+Public Sub dump(ByVal shtName As String, Optional ByVal keyPos As Long = 1, Optional ByVal startingRow As Long = 1, Optional ByVal startingCol As Long = 2, Optional ByVal endRow As Long, Optional ByVal endCol As Long, Optional ByRef wb As Workbook, Optional ByVal isVertical As Boolean = True, Optional ByVal trailingRows As Long = 0, Optional ByVal withLabel As Boolean = False)
 
     With getTargetSht(shtName, wb)
 
@@ -776,7 +776,7 @@ Public Sub dump(ByVal shtName As String, Optional ByVal keyPos As Long = 1, Opti
                     .Cells(keyPos, startingCol + cnt) = k
                 End If
             
-                Me.dict(k).dump shtName, keyPos + 1, startingRow + cnt + 1, startingCol + 1, startingRow + cnt + Me.dict(k).count(True), endCol, wb, isVertical, trailingRows
+                Me.dict(k).dump shtName, keyPos + 1, startingRow + cnt + 1, startingCol + 1, startingRow + cnt + Me.dict(k).count(True), endCol, wb, isVertical, trailingRows, withLabel
                 cnt = cnt + Me.dict(k).count(True) + 1
     
             Next k
@@ -790,6 +790,13 @@ Public Sub dump(ByVal shtName As String, Optional ByVal keyPos As Long = 1, Opti
             End If
         
             Me.unload shtName, keyPos, startingRow, startingCol, endRow, endCol, wb, isVertical
+        End If
+        
+        If withLabel And Me.hasLabel Then
+            
+            .Rows(startingRow).Insert Shift:=xlDown
+            .Range(.Cells(startingRow, startingCol), .Cells(startingRow, startingCol + Me.label.count - 1)) = Me.label.keysArr
+            
         End If
         
     End With
