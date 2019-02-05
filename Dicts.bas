@@ -2,8 +2,8 @@
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               04.02.2019
-'                                          new feature: dump now support dump with label
+'@lastUpdate                               05.02.2019
+'                                          bugfix arrToDict  now can process duplicated keys properly
 '@TODO                                     add comments
 '                                          unify the Exception-Code
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -302,7 +302,7 @@ Function getTargetSht(Optional ByVal targSht As String = "", Optional ByRef wb A
     With tmpWb
         Dim tmpname As String
         
-        tmpname = ActiveSheet.Name
+        tmpname = ActiveSheet.name
         If Trim(targSht) = "" Then
             targSht = tmpname
         End If
@@ -425,8 +425,8 @@ Public Function rngToAddress(ByRef rng As Range, Optional ByVal withShtName As B
     
     Dim shtName As String
     Dim wbName As String
-    shtName = "'" & fst.Worksheet.Name & "'!"
-    wbName = "'[" & fst.Worksheet.parent.Name & "]" & fst.Worksheet.Name & "'!"
+    shtName = "'" & fst.Worksheet.name & "'!"
+    wbName = "'[" & fst.Worksheet.parent.name & "]" & fst.Worksheet.name & "'!"
         
     Dim i As Long
     Dim j As Long
@@ -543,18 +543,28 @@ Function arrToDict(keyArr, valArr, Optional ByVal isReversed As Boolean = False,
             Err.Raise 8888, "", "Arrays with different length can not be combined"
         End If
         
-        Dim i
+        Dim i, k
         
         If isReversed Then
             For i = UBound(keyArr) To LBound(keyArr) Step -1
                 If Len(Trim(CStr(keyArr(i)))) > 0 Then
-                    res.add IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i)), valArr(UBound(valArr) + i - UBound(valArr))
+                    k = IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i))
+                    If res.exists(k) Then
+                        res.remove k
+                    End If
+                    
+                    res.add k, valArr(i)
                 End If
             Next i
         Else
             For i = LBound(keyArr) To UBound(keyArr)
                 If Len(Trim(CStr(keyArr(i)))) > 0 Then
-                   res.add IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i)), valArr(LBound(valArr) + i - LBound(valArr))
+                    k = IIf(keyCstr, Trim(CStr(keyArr(i))), keyArr(i))
+                    If res.exists(k) Then
+                        res.remove k
+                    End If
+                
+                    res.add k, valArr(i)
                 End If
             Next i
         End If
@@ -764,32 +774,32 @@ End Sub
 Public Sub dump(ByVal shtName As String, Optional ByVal keyPos As Long = 1, Optional ByVal startingRow As Long = 1, Optional ByVal startingCol As Long = 2, Optional ByVal endRow As Long, Optional ByVal endCol As Long, Optional ByRef wb As Workbook, Optional ByVal isVertical As Boolean = True, Optional ByVal trailingRows As Long = 0, Optional ByVal withLabel As Boolean = False)
 
     With getTargetSht(shtName, wb)
-
-        If isDicted_(Me) Then
-            Dim k
-            Dim cnt As Long
-            
-            For Each k In Me.keys
+        
+        If Me.count > 0 Then
+            If isDicted_(Me) Then
+                Dim k
+                Dim cnt As Long
+                
+                For Each k In Me.keys
+                    If isVertical Then
+                        .Cells(startingRow + cnt, keyPos) = k
+                    Else
+                        .Cells(keyPos, startingCol + cnt) = k
+                    End If
+                
+                    Me.dict(k).dump shtName, keyPos + 1, startingRow + cnt + 1, startingCol + 1, startingRow + cnt + Me.dict(k).count(True), endCol, wb, isVertical, trailingRows, withLabel
+                    cnt = cnt + Me.dict(k).count(True) + 1
+                Next k
+            Else
+                 'unload the key
                 If isVertical Then
-                    .Cells(startingRow + cnt, keyPos) = k
+                    .Cells(startingRow, keyPos).Resize(Me.count, 1) = Application.WorksheetFunction.Transpose(Me.keysArr)
                 Else
-                    .Cells(keyPos, startingCol + cnt) = k
+                    .Cells(keyPos, startingCol).Resize(1, Me.count) = Me.keysArr
                 End If
             
-                Me.dict(k).dump shtName, keyPos + 1, startingRow + cnt + 1, startingCol + 1, startingRow + cnt + Me.dict(k).count(True), endCol, wb, isVertical, trailingRows, withLabel
-                cnt = cnt + Me.dict(k).count(True) + 1
-    
-            Next k
-
-        Else
-             'unload the key
-            If isVertical Then
-                .Cells(startingRow, keyPos).Resize(Me.count, 1) = Application.WorksheetFunction.Transpose(Me.keysArr)
-            Else
-                .Cells(keyPos, startingCol).Resize(1, Me.count) = Me.keysArr
+                Me.unload shtName, keyPos, startingRow, startingCol, endRow, endCol, wb, isVertical
             End If
-        
-            Me.unload shtName, keyPos, startingRow, startingCol, endRow, endCol, wb, isVertical
         End If
         
         If withLabel And Me.hasLabel Then
@@ -1085,7 +1095,7 @@ Public Function ranged(ByVal operation As String, Optional ByVal placeholder As 
         Next k
     ElseIf aggregate = AggregateMethod.Aggfilter Then
         For Each k In Me.keys
-            res.dict(k) = l.addAll(Me.dict(k), False).filter(operation, placeholder, idx, replaceDecimalPoint, setNullValTo).toArray
+            res.dict(k) = l.addAll(Me.dict(k), False).FILTER(operation, placeholder, idx, replaceDecimalPoint, setNullValTo).toArray
         Next k
     Else
         Err.Raise 8889, , "unknown aggregate parameter"
@@ -1096,7 +1106,7 @@ Public Function ranged(ByVal operation As String, Optional ByVal placeholder As 
     Set l = Nothing
 End Function
 
-Public Function filter(ByVal operation, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo As Variant = 0, Optional ByVal filterWith As Long = ProcessWith.Value) As Dicts
+Public Function FILTER(ByVal operation, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo As Variant = 0, Optional ByVal filterWith As Long = ProcessWith.Value) As Dicts
      
      If (Not IsReg(operation)) And TypeName(operation) <> "String" Then
         Err.Raise 8889, , "ParameterTypeError: 'operation' should be either String or RegExp!"
@@ -1134,13 +1144,13 @@ Public Function filter(ByVal operation, Optional ByVal placeholder As String = "
      
      copyLabel Me, res
      
-     Set filter = res
+     Set FILTER = res
      Set l = Nothing
      Set tmp = Nothing
 End Function
 
 Public Function filterKey(ByVal operation, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo As Variant = 0) As Dicts
-    Set filterKey = filter(operation, placeholder, idx, replaceDecimalPoint, setNullValTo, ProcessWith.Key)
+    Set filterKey = FILTER(operation, placeholder, idx, replaceDecimalPoint, setNullValTo, ProcessWith.Key)
 End Function
 
 Public Function groupBy(ByRef attr, ByVal valCol As Long, Optional ByVal aggregateBy = xlSum) As Dicts
