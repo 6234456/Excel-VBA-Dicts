@@ -55,13 +55,40 @@ Sub Test()
     d.clear
     l.clear
     
+    
     d.add 1, Array(l.of(1, 2, 3), 2, 3, 4)
     d.add 2, Array(l.of(2, 2, 3), 2, 3, 4)
     d.add 3, Array(l.of(3, 2, 3), 2, 3, 4)
+    d.add 4, "Qiou"
+    d.add 5, Array(l.of("qiou", Null, Date), 1, 23.4, Empty, True)
+    d.add 6, Nothing
+    
+    Dim d1 As New Dicts
+    Set d1 = d1.fromArray(Array(1, 2, 3))
+    d1.add 4, Array(1, 2, l.of(1, 2, 3, True, Empty, "qiou"), Null, d1.fromArray(Array("qiou", "yang")))
+    
+    d.add 7, d1
+    
+    d.add 8, 2
     
     d.label = Array("index", "a1", "a2", "a3")
     
     Debug.Assert d.getByLabel(3, "index").getVal(0) = 3
+    
+    
+    
+    Debug.Assert d.x_toString(Null) = "null"
+    Debug.Assert d.x_toString(Nothing) = "null"
+    Debug.Assert d.x_toString(Empty) = "null"
+    Debug.Assert d.x_toString(True) = "true"
+    Debug.Assert d.x_toString(Array(Null, Nothing)) = "[ null, null ]"
+    Debug.Assert l.of(Null, Null).toString = "[ null, null ]"
+
+    Debug.Assert Not d.isNothing("123")
+    
+    d.p
+    
+    d.toJSON ("src.json")
     
     Debug.Print "All tests passed!"
     
