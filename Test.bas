@@ -55,6 +55,8 @@ Sub Test()
     d.clear
     l.clear
     
+    d.fromString(" { 'name' : 1, ""age"" : ""Yang"", 'Demo' : [1,2,3,  -4   , null, [false], 'trail', [{'2' : 'Qiou Yang'}]], 'trail' : null ").p
+    
     
     d.add 1, Array(l.of(1, 2, 3), 2, 3, 4)
     d.add 2, Array(l.of(2, 2, 3), 2, 3, 4)
