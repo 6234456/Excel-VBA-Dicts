@@ -2,8 +2,8 @@
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               04.02.2019
-'                                          bugfix fromRng
+'@lastUpdate                               27.06.2019
+'                                          toString with the implementation from Dicts
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -188,7 +188,7 @@ Public Function toRng(ByRef rng As Range)
         y = pLen
         
         If y = 1 Then
-            rng.Resize(1, pArr(0).length).Value = Me.toArray
+            rng.Resize(1, pArr(0).length).value = Me.toArray
         Else
             Dim lenArr As New Lists
             
@@ -208,9 +208,9 @@ Public Function toRng(ByRef rng As Range)
             
             For i = 0 To pLen - 1
                 If isInstance(pArr(i), "Lists") Then
-                    rng.offSet(i, 0).Resize(1, pArr(i).length).Value = pArr(i).toArray
+                    rng.offSet(i, 0).Resize(1, pArr(i).length).value = pArr(i).toArray
                 Else
-                    rng.offSet(i, 0).Value = pArr(i)
+                    rng.offSet(i, 0).value = pArr(i)
                 End If
             Next i
         End If
@@ -394,7 +394,7 @@ Public Function addAll(arr, Optional ByVal keepOldElements As Boolean = True) As
             Me.add arr.getVal(i)
         Next i
     ElseIf TypeName(arr) = "Range" Then
-        For Each i In arr.Value
+        For Each i In arr.value
             Me.add i
         Next i
     ElseIf IsArray(arr) Then
@@ -1151,29 +1151,9 @@ Public Function toArray() As Variant
 End Function
 
 Public Function toString()
-
-    If pLen = 0 Then
-        toString = "[]"
-    Else
-        Dim res As String
-        res = "["
-
-        Dim i As Integer
-       
-        For i = 0 To pLen - 1
-            If IsArray(pArr(i)) Then
-                Dim t As New Lists
-                res = res & t.addAll(pArr(i)).toString & ", "
-            ElseIf Not isInstanceOf(pArr(i), Array("Lists", "Dicts")) Then
-                res = res & pArr(i) & ", "
-            Else
-                res = res & pArr(i).toString() & ", "
-            End If
-        Next i
-
-        toString = Left(res, Len(res) - 2) & "]"
-    End If
-   
+    Dim d As New Dicts
+    toString = d.x_toString(Me)
+    Set d = Nothing
 End Function
 
 Public Function isInstanceOf(testObj, typeArr) As Boolean
@@ -1230,6 +1210,7 @@ End Function
 
 Public Function p()
     Debug.Print Me.toString
+
 End Function
 
 Public Function unique() As Lists
