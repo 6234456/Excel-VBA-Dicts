@@ -2,8 +2,8 @@
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               26.06.2019
-'                                          minor bugfix: print null
+'@lastUpdate                               27.06.2019
+'                                          parser JSON   fromString
 '                                          add new test cases
 '@TODO                                     add comments
 '                                          unify the Exception-Code
@@ -1614,13 +1614,175 @@ Public Function isInstanceOf(testObj, typeArr) As Boolean
 End Function
 
 Public Function withSameType(obj1, obj2) As Boolean
-
     withSameType = TypeName(obj1) = TypeName(obj2)
-    
 End Function
 
 Public Function letterToColNum(ByVal l As String) As Integer
-    
     letterToColNum = Range(l & "1").Column
+End Function
+
+Public Function fromString(ByRef s As String, Optional ByRef i As Long = 1) As Variant
     
+    skipSpace s, i
+    
+
+    Select Case Mid$(s, i, 1)
+    Case "["
+        Set fromString = listFromString(s, i)
+    Case "{"
+        Set fromString = dictFromString(s, i)
+    Case """", "'"
+        fromString = strFromString(s, i)
+    Case Else
+        fromString = elementFromString(s, i)
+    End Select
+
+End Function
+
+' element at i is "{"
+Public Function dictFromString(ByRef s As String, Optional ByRef i As Long = 1) As Dicts
+
+    
+    Dim stack As New Lists
+    Dim res As New Dicts
+    Dim k As String
+    
+    skipSpace s, i
+    
+    stack.add i
+    
+    i = i + 1
+    
+    Do
+    Select Case Mid$(s, i, 1)
+        Case "{"
+            stack.add i
+            i = i + 1
+            
+            skipSpace s, i
+            k = strFromString(s, i)
+            skipSpace s, i
+            res.add k, fromString(s, i)
+            
+            If i >= Len(s) Then GoTo endFunc
+          '  i = i - 1
+        Case ",", " ", VBA.vbCr, VBA.vbTab
+            i = i + 1
+        Case "}"
+            Set stack = stack.dropLast(1)
+            
+            i = i + 1
+            If stack.length = 0 Then GoTo endFunc
+        Case ":"
+            i = i + 1
+            res.add k, fromString(s, i)
+        Case Else
+            k = strFromString(s, i)
+    End Select
+    
+    Loop While i < Len(s)
+    
+endFunc:
+    Set dictFromString = res
+
+End Function
+
+' element at i is "["
+Public Function listFromString(ByRef s As String, Optional ByRef i As Long = 1) As Lists
+    
+    Dim stack As New Lists
+    Dim res As New Lists
+    
+    skipSpace s, i
+    
+    stack.add i
+    
+    i = i + 1
+    
+    Do
+    Select Case Mid$(s, i, 1)
+        Case "["
+            stack.add i
+            res.add listFromString(s, i)
+            
+            If i >= Len(s) Then GoTo endFunc
+            i = i - 1
+        Case "]"
+            Set stack = stack.dropLast(1)
+        
+            i = i + 1
+            If stack.length = 0 Then GoTo endFunc
+        Case ","
+            i = i + 1
+        Case Else
+            res.add fromString(s, i)
+    End Select
+    
+    Loop
+    
+endFunc:
+    Set listFromString = res
+    
+End Function
+
+Private Function skipSpace(ByRef s As String, Optional ByRef i As Long = 1)
+    
+    Do
+        Select Case Mid$(s, i, 1)
+        Case " ", VBA.vbCr, VBA.vbTab
+            i = i + 1
+        Case Else
+            Exit Function
+        End Select
+    Loop
+End Function
+
+Public Function elementFromString(ByRef s As String, Optional ByRef i As Long = 1) As Variant
+    If Mid$(s, i, 4) = "true" Then
+        elementFromString = True
+        i = i + 4
+    ElseIf Mid$(s, i, 5) = "false" Then
+        elementFromString = False
+        i = i + 5
+    ElseIf Mid$(s, i, 4) = "null" Then
+        elementFromString = Null
+        i = i + 4
+    Else
+        elementFromString = numericFromString(s, i)
+    End If
+End Function
+
+
+Public Function strFromString(ByRef s As String, ByRef i As Long) As String
+    Dim start As Long
+    start = i + 1
+    
+    Dim quotation As String
+    quotation = Mid$(s, i, 1)
+    
+    i = i + 1
+    
+    Do
+        If Mid$(s, i, 1) = quotation Then
+            strFromString = Mid$(s, start, i - start)
+            i = i + 1
+            Exit Function
+        End If
+        
+        i = i + 1
+    Loop
+End Function
+
+Public Function numericFromString(ByRef s As String, ByRef i As Long) As Double
+    Dim start As Long
+    start = i
+    
+    Do
+        If Not InStr("-.0123456789 ", Mid$(s, i, 1)) > 0 Then
+            numericFromString = CDbl(Replace(Trim(Mid$(s, start, i - start)), ".", Application.DecimalSeparator))
+            Exit Function
+        End If
+        
+        i = i + 1
+    Loop
 End Function
