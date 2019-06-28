@@ -2,28 +2,34 @@ Sub Test()
     Dim d As New Dicts
     Dim l As New Lists
 
-    Debug.Assert d.count = 0
+    Debug.Assert d.Count = 0
     Debug.Assert l.length = 0
     
-    l.remove 1
+    l.Remove 1
     l.removeAt 0
+    
+    Dim d2 As New Dicts
+    d2.add 2, 1
+    Debug.Assert l.fromSerial(1, 10).toMap.diff(d2).Count = 9
+    
+    d2.load("", 1, 2, appendMode:=True).p
     
     Debug.Assert d.wb.Name = ActiveWorkbook.Name
     
     With d.fromArray(l.fromSerial(1, 10))
-        Debug.Assert .dict(10) = 9
+        Debug.Assert .dict.Item(10) = 9
         Debug.Assert .keysArr(9) = 10
         Debug.Assert l.fromSerial(1, 10).contains(10)
         
         Debug.Assert l.addAll(.valsArr, False).map("_*2").getVal(9) = 18
         Debug.Assert l.addAll(.keysArr, False).contains(10)
         
-        Debug.Assert .count = 10
+        Debug.Assert .Count = 10
         Debug.Assert .reduceKey("_+?", -1) = 54
         Debug.Assert .reduce("_+?", 10) = 55
         
-        Debug.Assert .filterKey("_>8").count = 2
-        Debug.Assert .filter("_>8").count = 1
+        Debug.Assert .filterKey("_>8").Count = 2
+        Debug.Assert .filter("_>8").Count = 1
         
         Debug.Assert .mapKey("_+6").keysArr(0) = 7
         Debug.Assert .map("_+6").valsArr(0) = 6
@@ -46,7 +52,7 @@ Sub Test()
     
     Debug.Assert l.fromSerial(10, 15).filterX("Test.f").length = 0
     
-    Debug.Assert l.fromSerial(10, 15).reduceX("Test.r", New Dicts).count = 6
+    Debug.Assert l.fromSerial(10, 15).reduceX("Test.r", New Dicts).Count = 6
     
     With l.of(1, 2, 3, 4).permutation
      Debug.Assert .length = 4 * 3 * 2 * 1
@@ -54,8 +60,6 @@ Sub Test()
     
     d.clear
     l.clear
-    
-    d.fromString(" { 'name' : 1, ""age"" : ""Yang"", 'Demo' : [1,2,3,  -4   , null, [false], 'trail', [{'2' : 'Qiou Yang'}]], 'trail' : null ").p
     
     
     d.add 1, Array(l.of(1, 2, 3), 2, 3, 4)
@@ -76,9 +80,7 @@ Sub Test()
     d.label = Array("index", "a1", "a2", "a3")
     
     Debug.Assert d.getByLabel(3, "index").getVal(0) = 3
-    
-    
-    
+
     Debug.Assert d.x_toString(Null) = "null"
     Debug.Assert d.x_toString(Nothing) = "null"
     Debug.Assert d.x_toString(Empty) = "null"
@@ -90,7 +92,40 @@ Sub Test()
     
     d.p
     
-    d.toJSON ("src.json")
+   ' d.toJSON ("src.json")
+    
+    
+    Dim t As New TreeSets
+    
+    t.add 12
+    t.add 3
+    t.addAll 1, 2, 3, 4, 5
+
+    Debug.Assert t.contains(3)
+    
+    Debug.Assert IsNull(t.ceiling(14))
+
+
+    Dim m As New TreeMaps
+    
+    m.add 1, 2
+    m.add 2, 3
+    m.add 2, 4
+    m.add "2", 5
+    
+    Debug.Assert m.Count = 3
+    
+    Debug.Assert Not m.exists(8)
+    m.Item(8) = 0
+    
+    Debug.Assert m.Item(8) = 0
+    
+    m.Item("2") = 10
+    
+    m.Remove 8
+    
+    Debug.Assert m.Item("2") = 10
+    Debug.Assert m.Count = 3
     
     Debug.Print "All tests passed!"
     
@@ -205,10 +240,10 @@ Function solutions1(ByRef l As Lists) As Dicts
         Set tmp1 = l
         For j = 0 To tmp1.length - 1
             Set d2 = solutions1(tmp1.copy.removeAt(j))
-            tmp2.addAll d2.keys, False
+            tmp2.addAll d2.Keys, False
             For k = 0 To tmp2.length - 1
                 Set tmp = solutions1(l.of(tmp1.getVal(j), tmp2.getVal(k)))
-                For Each i In tmp.keys
+                For Each i In tmp.Keys
                     tmp3 = Split(tmp.dict(i), " ")
                     
                     If Trim(tmp3(0)) = CStr(tmp1.getVal(j)) Then
