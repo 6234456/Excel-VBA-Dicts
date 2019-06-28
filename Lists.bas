@@ -2,8 +2,8 @@
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               27.06.2019
-'                                          toString with the implementation from Dicts
+'@lastUpdate                               28.06.2019
+'                                          remove the redundant functions
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -36,10 +36,6 @@ End Property
 
 Public Property Get length() As Integer
     length = pLen
-End Property
-
-Public Property Get sign() As String
-    sign = "Lists"
 End Property
 
 Public Function init() As Lists
@@ -108,7 +104,7 @@ Public Function isEmptyList() As Boolean
     
     Dim i
     For i = 0 To pLen - 1
-        If Not IsEmpty(pArr(i)) Then
+        If Not isEmpty(pArr(i)) Then
             isEmptyList = False
             Exit For
         End If
@@ -123,29 +119,15 @@ Public Function isLists(testObj As Variant) As Boolean
    isLists = TypeName(testObj) = "Lists"
 End Function
 
-Private Function isObj(ByVal obj) As Boolean
-    On Error GoTo listhandler
-    
-    Dim res As Boolean
-    res = False
-    
-    Dim myType As String
-    myType = obj.sign
-    
-listhandler:
-    isObj = (Err.Number = 0)
-
-End Function
-
 'in case of 1 * N or N * 1 matrix, return 1-dimensional array
 
 Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String = "v") As Lists
     Dim res As New Lists
     
     Dim rowNum As Integer
-    rowNum = rng.Rows.count
+    rowNum = rng.Rows.Count
     Dim colNum As Integer
-    colNum = rng.Columns.count
+    colNum = rng.Columns.Count
     
     Dim i
     
@@ -313,11 +295,11 @@ Public Function add(ele, Optional ByVal keepOldElements As Boolean = True) As Li
 End Function
 
 
-Public Function remove(ByVal ele) As Lists
+Public Function Remove(ByVal ele) As Lists
     If Me.contains(ele) Then
-        Set remove = Me.removeAt(Me.indexOf(ele))
+        Set Remove = Me.removeAt(Me.indexOf(ele))
     Else
-        Set remove = Me
+        Set Remove = Me
     End If
 End Function
 
@@ -772,13 +754,13 @@ Public Function map(ByVal operation As String, Optional ByVal placeholder As Str
     
     If replaceDecimalPoint Then
         For Each i In Me.toArray
-            i = IIf(IsEmpty(i), setNullValTo, i)
+            i = IIf(isEmpty(i), setNullValTo, i)
             res.add (Application.Evaluate(Replace(Replace(operation, placeholder, Replace("" & i, ",", ".")), idx, cnt & "")))
             cnt = cnt + 1
         Next i
     Else
         For Each i In Me.toArray
-            i = IIf(IsEmpty(i), setNullValTo, i)
+            i = IIf(isEmpty(i), setNullValTo, i)
             res.add (Application.Evaluate(Replace(Replace(operation, placeholder, "" & i), idx, cnt & "")))
             cnt = cnt + 1
         Next i
@@ -848,7 +830,7 @@ Public Function filter(ByVal judgement As String, Optional ByVal placeholder As 
     
     If replaceDecimalPoint Then
         For Each i In Me.toArray
-            i = IIf(IsEmpty(i), setNullValTo, i)
+            i = IIf(isEmpty(i), setNullValTo, i)
             If Application.Evaluate(Replace(Replace(judgement, placeholder, Replace("" & i, ",", ".")), idx, cnt)) Then
                 res.add i
             End If
@@ -857,7 +839,7 @@ Public Function filter(ByVal judgement As String, Optional ByVal placeholder As 
         Next i
     Else
         For Each i In Me.toArray
-            i = IIf(IsEmpty(i), setNullValTo, i)
+            i = IIf(isEmpty(i), setNullValTo, i)
             If Application.Evaluate(Replace(Replace(judgement, placeholder, "" & i), idx, cnt)) Then
                 res.add i
             End If
@@ -950,7 +932,7 @@ Public Function judgeReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        res.add reg.test(Me.getVal(i))
+        res.add reg.Test(Me.getVal(i))
     Next i
     
     Set judgeReg = res
@@ -963,7 +945,7 @@ Public Function mapReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        If reg.test(Me.getVal(i)) Then
+        If reg.Test(Me.getVal(i)) Then
             res.add reg.Execute(Me.getVal(i))(0).submatches(0)
         Else
             res.add Me.getVal(i)
@@ -981,13 +963,13 @@ Public Function nullVal(Optional setValTo As Variant) As Lists
     'setValTo missing, left out empty value
     If IsMissing(setValTo) Then
         For i = 0 To Me.length - 1
-            If Not IsEmpty(Me.getVal(i)) Then
+            If Not isEmpty(Me.getVal(i)) Then
                 res.add Me.getVal(i)
             End If
         Next i
     Else
         For i = 0 To Me.length - 1
-            res.add IIf(IsEmpty(Me.getVal(i)), setValTo, Me.getVal(i))
+            res.add IIf(isEmpty(Me.getVal(i)), setValTo, Me.getVal(i))
         Next i
     End If
 
@@ -1132,7 +1114,7 @@ Public Function toArray() As Variant
         Dim i As Integer
      
         For i = 0 To pLen - 1
-            If Not isObj(pArr(i)) Then
+            If Not IsObject(pArr(i)) Then
                 arr(i) = pArr(i)
             Else
                 If Me.isLists(pArr(i)) Then
@@ -1215,8 +1197,7 @@ End Function
 
 Public Function unique() As Lists
     Dim tmp As Object
-    Set tmp = CreateObject("scripting.dictionary")
-    tmp.compareMode = vbTextCompare
+    Set tmp = New TreeMaps
     
     Dim k
     
@@ -1225,7 +1206,7 @@ Public Function unique() As Lists
     Next k
     
     Me.clear
-    Set unique = Me.addAll(tmp.keys)
+    Set unique = Me.addAll(tmp.Keys)
     
     Set tmp = Nothing
 End Function
