@@ -1,0 +1,81 @@
+ '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'@desc                                     Util Class TreeMaps, Dictionary API implemented
+'@dependency                               TreeSets
+'@author                                   Qiou Yang
+'@license                                  MIT
+'@lastUpdate                               28.06.2019
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+Option Explicit
+
+Private pKeys As TreeSets
+Private pVals As Collection
+Const pUpdate As Boolean = True ' to update if duplicated
+
+
+Private Sub Class_Initialize()
+    Set pKeys = New TreeSets
+    Set pVals = New Collection
+End Sub
+
+Private Sub Class_Terminate()
+    Set pKeys = Nothing
+    Set pVals = Nothing
+End Sub
+
+Public Function add(key As Variant, value As Variant) As TreeMaps
+    ' index of key  + 1 = index of value
+    ' in case of duplicated key value, key and value will be both incremented
+    pKeys.add key, pUpdate
+    pVals.add value
+    Set add = Me
+End Function
+
+Public Property Get Keys() As Variant
+    Keys = pKeys.toArray
+End Property
+
+Public Property Get Count() As Variant
+    Count = pKeys.size
+End Property
+
+Public Property Let Item(key As Variant, value As Variant)
+    add key, value
+End Property
+   
+Public Property Get Item(key As Variant) As Variant
+    Dim tmp As Nodes
+    Set tmp = pKeys.ceiling(key, True)
+    
+    If tmp Is Nothing Then
+        Item = Null
+    Else
+        If IsObject(pVals.Item(tmp.index + 1)) Then
+            Set Item = pVals.Item(tmp.index + 1)
+        Else
+            Item = pVals.Item(tmp.index + 1)
+        End If
+    End If
+    
+    Set tmp = Nothing
+End Property
+
+Public Function exists(key As Variant) As Boolean
+    Dim tmp As Nodes
+    Set tmp = pKeys.ceiling(key, True)
+    exists = False
+    
+    If Not tmp Is Nothing Then
+        exists = tmp.value = key
+    End If
+    
+End Function
+
+Public Function RemoveAll()
+    pKeys.clear
+    Set pVals = New Collection
+End Function
+
+Public Function Remove(e)
+    pKeys.Remove e
+End Function
