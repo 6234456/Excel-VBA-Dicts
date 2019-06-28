@@ -1,3 +1,11 @@
+ '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'@desc                                     Util Class TreeSets, java TreeSet API implemented with VBA
+'@dependency                               Lists, Nodes
+'@author                                   Qiou Yang
+'@license                                  MIT
+'@lastUpdate                               28.06.2019
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
 Option Explicit
 
 
@@ -5,9 +13,13 @@ Private pLen  As Integer
 Private pRoot As Nodes
 Private pCnt As Integer
 
-Public Property Get sign() As String
-    sign = "TreeSets"
-End Property
+Private Sub Class_Initialize()
+    init
+End Sub
+
+Private Sub Class_Terminate()
+    clear
+End Sub
 
 Public Property Get root() As Nodes
     Set root = pRoot
@@ -15,32 +27,28 @@ End Property
 
 Public Function toString(Optional ByVal replaceDecimalPoint As Boolean = True) As String
     If pLen = 0 Then
-        toString = "{}"
+        toString = "{ }"
     Else
         Dim i
         
         Dim res As String
-        res = "{"
+        res = "{ "
         
-        If replaceDecimalPoint Then
-            For Each i In Me.toArray
+        For Each i In Me.toArray
+            If replaceDecimalPoint And IsNumeric(i) Then
                 res = res & Replace("" & i, ",", ".") & ", "
-            Next i
-        Else
-            For Each i In Me.toArray
+            Else
                 res = res & i & ", "
-            Next i
-        End If
-        
-        toString = left(res, Len(res) - 2) & "}"
+            End If
+        Next i
+       
+        toString = Left(res, Len(res) - 2) & " }"
     End If
     
 End Function
 
 Public Function p()
-    
     Debug.Print Me.toString
-
 End Function
 
 Public Function clear()
@@ -49,17 +57,33 @@ Public Function clear()
     Set pRoot = Nothing
 End Function
 
-Public Function ceiling(ByVal e) As Variant
+Public Function ceiling(ByVal e, Optional ByVal asNode As Boolean = False) As Variant
     
-    Dim res As New Nodes
-    res.init(Nothing, Nothing, -1, 0).e
-    
-    Call ceiling_(e, pRoot, res)
-    
-    If res.index = -1 Then
-        Set ceiling = Nothing
+    If Me.Count = 0 Then
+        If asNode Then
+          Set ceiling = Nothing
+        Else
+          ceiling = Null
+        End If
     Else
-        ceiling = res.value
+        Dim res As New Nodes
+        res.init Nothing, Nothing, -1, 0
+        
+        Call ceiling_(e, pRoot, res)
+        
+        If res.index = -1 Then
+            If asNode Then
+              Set ceiling = Nothing
+            Else
+              ceiling = Null
+            End If
+        Else
+            If asNode Then
+                Set ceiling = res
+            Else
+                ceiling = res.value
+            End If
+        End If
     End If
 
 End Function
@@ -97,7 +121,7 @@ Public Function pollFirst() As Variant
 
     Dim res
     res = Me.first()
-    Me.remove res
+    Me.Remove res
     pollFirst = res
     
 End Function
@@ -106,12 +130,12 @@ Public Function pollLast() As Variant
 
     Dim res
     res = Me.last()
-    Me.remove res
+    Me.Remove res
     pollLast = res
     
 End Function
 
-Public Function remove(ByVal e) As Boolean
+Public Function Remove(e As Variant) As Boolean
     
     Dim parent As Nodes
     Set parent = Nothing
@@ -127,12 +151,12 @@ Public Function remove(ByVal e) As Boolean
         pLen = pLen - 1
     End If
     
-    remove = res
+    Remove = res
 
 End Function
 
 
-Private Sub remove_(ByVal e, ByRef n As Nodes, ByRef parent As Nodes, ByRef res As Boolean, ByRef tmp As Integer)
+Private Function remove_(ByVal e, ByRef n As Nodes, ByRef parent As Nodes, ByRef res As Boolean, ByRef tmp As Integer)
     
     If e = n.value Then
         ' appendNode will add one back
@@ -168,18 +192,14 @@ Private Sub remove_(ByVal e, ByRef n As Nodes, ByRef parent As Nodes, ByRef res 
         If Not n.RightNode Is Nothing Then
             Call remove_(e, n.RightNode, n, res, tmp)
         End If
-        
-         
     Else
         If Not n.leftNode Is Nothing Then
             Call remove_(e, n.leftNode, n, res, tmp)
         End If
     End If
-    
+End Function
 
-End Sub
-
-Private Sub ceiling_(ByVal e, ByRef n As Nodes, ByRef res As Nodes)
+Private Function ceiling_(ByVal e, ByRef n As Nodes, ByRef res As Nodes)
     If e > n.value Then
         If Not n.RightNode Is Nothing Then
             Call ceiling_(e, n.RightNode, res)
@@ -188,39 +208,35 @@ Private Sub ceiling_(ByVal e, ByRef n As Nodes, ByRef res As Nodes)
         Set res = n
     Else
         If Not n.leftNode Is Nothing Then
-            If e > n.leftNode.value Then
-                res = e
-            Else
-                Call ceiling_(e, n.leftNode, res)
-            End If
+            Set res = n
+            Call ceiling_(e, n.leftNode, res)
         Else
             Set res = n
         End If
     End If
-End Sub
+End Function
 
 Public Property Get length() As Integer
     length = pLen
 End Property
 
-Public Property Get count() As Integer
-    count = pCnt
+Public Property Get Count() As Integer
+    Count = pCnt
 End Property
-
 
 Public Function init()
     pLen = 0
     pCnt = 0
 End Function
 
-Public Function add(ByVal val)
+Public Function add(val As Variant, Optional ByVal updateIfDuplicated As Boolean = False)
     Dim n As New Nodes
     
-    n.init(Nothing, Nothing, pCnt, val).e
+    n.init Nothing, Nothing, pCnt, val
     
     If pLen > 0 Then
         
-      Call appendNode(n, pRoot, pLen)
+      Call appendNode(n, pRoot, pLen, updateIfDuplicated)
 
     Else
         Set pRoot = n
@@ -233,7 +249,7 @@ Public Function add(ByVal val)
 
 End Function
 
-Private Sub appendNode(ByRef n As Nodes, ByRef root As Nodes, ByRef l As Integer)
+Private Function appendNode(ByRef n As Nodes, ByRef root As Nodes, ByRef l As Integer, Optional ByVal updateIfDuplicated As Boolean = False)
     
     Dim targVal, rootVal
     
@@ -242,35 +258,31 @@ Private Sub appendNode(ByRef n As Nodes, ByRef root As Nodes, ByRef l As Integer
     
     If targVal > rootVal Then
         If Not root.RightNode Is Nothing Then
-            Call appendNode(n, root.RightNode, l)
+            Call appendNode(n, root.RightNode, l, updateIfDuplicated)
         Else
             root.RightNode = n
             l = l + 1
-           
         End If
     ElseIf targVal < rootVal Then
         If Not root.leftNode Is Nothing Then
-            Call appendNode(n, root.leftNode, l)
+            Call appendNode(n, root.leftNode, l, updateIfDuplicated)
         Else
             root.leftNode = n
             l = l + 1
-           
+        End If
+    Else
+        If updateIfDuplicated Then
+            root.index = n.index
         End If
     End If
 
-End Sub
+End Function
 
-Public Function addAll(ByVal val)
+Public Function addAll(ParamArray val() As Variant)
     Dim arr
     Dim i
     
-    If isInstance(val, Array("Lists", "Sets", "TreeSets")) Then
-        arr = val.toArray
-    Else
-        arr = val
-    End If
-    
-    For Each i In arr
+    For Each i In val
         Me.add i
     Next i
     
@@ -297,48 +309,10 @@ Public Function last() As Variant
     
     last = tmp.value
 End Function
-Private Function isNothing(ByVal e) As Boolean
+Private Function isNothing(e) As Boolean
     
-    On Error GoTo handler1
-    Dim res As Boolean
-    
-    res = e Is Nothing
+ isNothing = TypeName(e) = "Nothing"
 
-handler1:
-    If Err.Number <> 0 Then
-        isNothing = False
-    Else
-        isNothing = res
-    End If
-
-End Function
-
-Private Function isInstance(ByVal obj, ByVal sign) As Boolean
-    On Error GoTo listhandler
-    
-    Dim res As Boolean
-    res = False
-    
-    Dim myType As String
-    myType = obj.sign
-    
-listhandler:
-    If Err.Number = 0 Then
-        If Not IsArray(sign) Then
-            res = (myType = sign)
-        Else
-            Dim e
-    
-            For Each e In sign
-                If e = myType Then
-                    res = True
-                    Exit For
-                End If
-            Next e
-        End If
-    End If
-    
-    isInstance = res
 End Function
 
 Public Function toArray()
