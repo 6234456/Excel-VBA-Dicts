@@ -4,6 +4,7 @@
 '@license                                  MIT
 '@lastUpdate                               28.06.2019
 '                                          remove the redundant functions
+'                                          remove destructor. may cause bug in 64-bit env
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -79,10 +80,6 @@ End Function
 
 Private Sub Class_Initialize()
     Me.init
-End Sub
-
-Private Sub Class_Terminate()
-    Erase pArr
 End Sub
 
 Private Sub check()
