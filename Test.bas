@@ -5,6 +5,15 @@ Sub Test()
     Debug.Assert d.Count = 0
     Debug.Assert l.length = 0
     
+    Dim c0 As New Collection
+    c0.add 2
+    c0.add 3
+    c0.add Array(4, 5, 6)
+    
+   Debug.Assert l.fromArray(c0).getVal(2, 0) = 4
+    
+    l.clear
+    
     l.Remove 1
     l.removeAt 0
     
