@@ -3,8 +3,9 @@
 '@author                                   Qiou Yang
 '@license                                  MIT
 '@lastUpdate                               28.06.2019
-'                                          remove the redundant functions
-'                                          remove destructor. may cause bug in 64-bit env
+'                                          remove the redundant functions, 
+'                                          remove destructor which may cause bug in 64 bit env, 
+'                                          add support for Collection
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -219,7 +220,7 @@ Public Function fromArray(arr, Optional ByVal iter As Boolean = True) As Lists
     If iter Then
         Dim i
         For Each i In arr
-            If IsArray(i) Then
+            If IsArray(i) Or TypeName(i) = "Collection" Then
                 l.add fromArray(i)
             Else
                 l.add i
