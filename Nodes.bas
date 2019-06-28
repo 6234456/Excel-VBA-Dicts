@@ -6,18 +6,17 @@ Private pLeft As Nodes  ' the maximal length of array object
 Private pRight As Nodes     ' the length of current List Object
 Private pVal As Variant      ' the type of the class
 
-Public Property Get sign() As String
-    sign = "Nodes"
-End Property
 
 Public Function toString() As String
-    
     toString = "<Nodes #" & pIndex & " " & pVal & ">"
-    
 End Function
 
 Public Property Get value() As Variant
-    value = pVal
+    If IsObject(pVal) Then
+        Set value = pVal
+    Else
+        value = pVal
+    End If
 End Property
 
 
@@ -66,8 +65,4 @@ Public Function init(ByRef l As Nodes, ByRef r As Nodes, ByVal i As Integer, ByV
     pVal = val
     
     Set init = Me
-End Function
-
-Public Function e()
-
 End Function
