@@ -12,7 +12,16 @@ Sub Test()
     
    Debug.Assert l.fromArray(c0).getVal(2, 0) = 4
     
-    l.clear
+    l.Clear
+    
+    Dim dn As New Dicts
+    dn.add 1, 2
+    
+    Debug.Assert dn.union(l.fromSerial(1, 10).toMap).diff(dn).Count = 9
+    Debug.Assert dn.Count = 1
+    
+    dn.Clear
+    d.Clear
     
     l.Remove 1
     l.removeAt 0
@@ -47,12 +56,12 @@ Sub Test()
     End With
     
     Dim l2 As New Lists
-    l.clear
+    l.Clear
     l.add l2
     l2.add d
     Debug.Assert TypeName(l.getVal(0, 0)) = "Dicts"
     
-    l.clear
+    l.Clear
     Debug.Assert l.of(1, 2, 3, 4, 5, Array(1, 2, 3)).length = 6
     
     Debug.Assert l.fromSerial(10, 15).mapX("Test.callback").slice(-1).getVal(0) = "225_"
@@ -67,8 +76,8 @@ Sub Test()
      Debug.Assert .length = 4 * 3 * 2 * 1
     End With
     
-    d.clear
-    l.clear
+    d.Clear
+    l.Clear
     
     
     d.add 1, Array(l.of(1, 2, 3), 2, 3, 4)
@@ -113,28 +122,6 @@ Sub Test()
     Debug.Assert t.contains(3)
     
     Debug.Assert IsNull(t.ceiling(14))
-
-
-    Dim m As New TreeMaps
-    
-    m.add 1, 2
-    m.add 2, 3
-    m.add 2, 4
-    m.add "2", 5
-    
-    Debug.Assert m.Count = 3
-    
-    Debug.Assert Not m.exists(8)
-    m.Item(8) = 0
-    
-    Debug.Assert m.Item(8) = 0
-    
-    m.Item("2") = 10
-    
-    m.Remove 8
-    
-    Debug.Assert m.Item("2") = 10
-    Debug.Assert m.Count = 3
     
     Debug.Print "All tests passed!"
     
