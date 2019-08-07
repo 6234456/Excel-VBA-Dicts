@@ -2,8 +2,8 @@
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               29.06.2019
-'                                          integrate with TreeMaps
+'@lastUpdate                               06.08.2019
+'                                          minor bugfix / load method now does not change the status of  underlying object
 '                                          add new test cases
 '@TODO                                     add comments
 '                                          unify the Exception-Code
@@ -114,7 +114,7 @@ Public Function exists(key As Variant) As Boolean
 End Function
 
 Public Function RemoveAll()
-    pKeys.Clear
+    pKeys.clear
     Set pVals = New Collection
 End Function
 
@@ -122,7 +122,7 @@ Public Function Remove(e)
     pKeys.Remove e
 End Function
 
-Public Function Clear()
+Public Function clear()
     RemoveAll
 End Function
 
@@ -616,6 +616,7 @@ Public Function load(Optional ByVal sht As String = "", Optional ByVal KeyCol As
 
     Set keyRng = Nothing
     Set valRng = Nothing
+    
 End Function
 
 Public Function loadH(Optional ByVal sht As String = "", Optional ByVal KeyRow As Long = 1, Optional ByVal ValRow = 1, Optional ColBegine As Variant = 1, Optional ByVal ColEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False) As Dicts
@@ -623,17 +624,20 @@ Public Function loadH(Optional ByVal sht As String = "", Optional ByVal KeyRow A
 End Function
 
 '@desc update self with new dictionary obj
+'@deprecated only for the legacy code
 Public Function of(ByRef dictObj As Dicts) As Dicts
     Set of = dictObj
 End Function
 
 '@desc create a new instance with the dictionary obj
+'@deprecated only for the legacy code
 Public Function createInstance(ByRef dictObj As Dicts) As Dicts
     Dim res As New Dicts
     Set createInstance = res.of(dictObj)
     Set res = Nothing
 End Function
 
+'@deprecated only for the legacy code
 Public Function emptyInstance() As Dicts
     Dim res As New Dicts
     Set emptyInstance = res
@@ -645,7 +649,7 @@ Public Function loadStruct(ByVal sht As String, ByVal KeyCol1 As Long, ByVal Key
 
     With getTargetSht(sht, wb)
     
-        Dim dict As Dicts
+        Dim dict As New Dicts
         
         If IsMissing(RowBegine) Then
             RowBegine = 1
@@ -665,7 +669,7 @@ Public Function loadStruct(ByVal sht As String, ByVal KeyCol1 As Long, ByVal Key
         Do While tmpCurrentRow > RowBegine
             tmpCurrentRow = .Cells(tmpCurrentRow, KeyCol1).End(xlUp).row
             
-            Set dict.Item(.Cells(tmpCurrentRow, KeyCol1).value) = tmpDict.load(sht, KeyCol2, valCol, tmpCurrentRow + 1, tmpPreviousRow, wb, Reversed)
+            dict.add .Cells(tmpCurrentRow, KeyCol1).value, tmpDict.load(sht, KeyCol2, valCol, tmpCurrentRow + 1, tmpPreviousRow, wb, Reversed)
             Set tmpDict = Nothing
             
             tmpPreviousRow = tmpCurrentRow - 1
@@ -1020,7 +1024,7 @@ Public Function reduceRngVertical(Optional ByVal operation As String = "?+_", Op
    
     Set reduceRngVertical = l
     Set l = Nothing
-    pList.Clear
+    pList.clear
 End Function
 
 ''''''''''''
@@ -1223,7 +1227,7 @@ Public Function groupBy(ByRef attr, ByVal valCol As Long, Optional ByVal aggrega
     
     Set groupBy = res
     
-    pList.Clear
+    pList.clear
     Set nl = Nothing
     Set res = Nothing
     Set parent = Nothing
@@ -1450,7 +1454,7 @@ Private Function getLabeledSubDict(k) As Dicts
             
             Set getLabeledSubDict = res
             Set res = Nothing
-            pList.Clear
+            pList.clear
         Else
             Set getLabeledSubDict = Me.Item(k)
         End If
