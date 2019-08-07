@@ -2,9 +2,9 @@
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               06.08.2019
+'@lastUpdate                               07.08.2019
 '                                          minor bugfix / load method now does not change the status of  underlying object
-'                                          add new test cases
+'                                          feed/reset method -> feed the value recursively to the struct
 '@TODO                                     add comments
 '                                          unify the Exception-Code
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -681,6 +681,46 @@ Public Function loadStruct(ByVal sht As String, ByVal KeyCol1 As Long, ByVal Key
 
 End Function
 
+Public Function reset(Optional ByVal v As Variant = 0) As Dicts
+    
+    Dim k
+    
+    For Each k In Me.Keys
+       If isDict(Me.Item(k)) Then
+            Me.Item(k).reset v
+        Else
+            Me.Item(k) = v
+       End If
+    Next k
+    
+    Set reset = Me
+    
+End Function
+
+' incremental based on the data Dict feed
+Public Function feed(ByRef d As Dicts, Optional ByVal isIncremental As Boolean = False) As Dicts
+    
+    Dim k
+    
+    For Each k In Me.Keys
+       If isDict(Me.Item(k)) Then
+            Me.Item(k).feed d
+        Else
+            If d.exists(k) Then
+                If isIncremental Then
+                    Me.Item(k) = Me.Item(k) + d.Item(k)
+                Else
+                    Me.Item(k) = d.Item(k)
+                End If
+            End If
+       End If
+    Next k
+    
+    Set feed = Me
+
+End Function
+
+
 ' rng can be Range Object or an array
 Public Function frequencyCount(ByRef rng) As Dicts
 
@@ -1065,6 +1105,32 @@ End Function
 
 Public Function mapKey(ByVal operation, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0) As Dicts
      Set mapKey = map(operation, placeholder, idx, replaceDecimalPoint, setNullValTo, ProcessWith.key)
+End Function
+
+Public Function mergeMap(ByVal operation, ByRef other As Dicts, Optional ByVal placeholder As String = "_", Optional ByVal elemSelf As String = "{1}", Optional ByVal elemOther As String = "{2}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0, Optional ByVal mapWith As Long = ProcessWith.value) As Dicts
+    
+    Dim k
+    Dim mt, ot
+    Dim res As New Dicts
+    
+    For Each k In Me.Keys
+   
+        ot = IIf(other.exists(k), other.Item(k), setNullValTo)
+
+        ot = IIf(replaceDecimalPoint, Replace("" & ot, ",", "."), ot)
+        mt = Me.Item(k)
+        mt = IIf(replaceDecimalPoint, Replace("" & mt, ",", "."), mt)
+            
+        res.Item(k) = Application.Evaluate(Replace(Replace(operation, elemSelf, mt), elemOther, ot))
+        
+    Next k
+    
+    copyLabel Me, res
+    
+    Set mergeMap = res
+    Set res = Nothing
+
+
 End Function
 
 Public Function ranged(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0, Optional ByVal initialVal As Variant = 0, Optional ByVal aggregate As Long = AggregateMethod.AggReduce) As Dicts
@@ -1771,3 +1837,4 @@ Public Function numericFromString(ByRef s As String, ByRef i As Long) As Double
         i = i + 1
     Loop
 End Function
+
