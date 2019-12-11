@@ -2,9 +2,10 @@
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               07.08.2019
-'                                          minor bugfix / load method now does not change the status of  underlying object
-'                                          feed/reset method -> feed the value recursively to the struct
+'@dependency                               Lists, Nodes, TreeSets
+'@lastUpdate                               11.12.2019
+'                                          add load cell text
+'                                          load does not change the underlying object in place
 '@TODO                                     add comments
 '                                          unify the Exception-Code
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -301,7 +302,7 @@ Function getTargetSht(Optional ByVal targSht As String = "", Optional ByRef wb A
     With tmpWb
         Dim tmpname As String
         
-        tmpname = ActiveSheet.Name
+        tmpname = ActiveSheet.name
         If Trim(targSht) = "" Then
             targSht = tmpname
         End If
@@ -355,13 +356,47 @@ Function getRange(Optional ByVal targSht As String = "", Optional ByVal targKeyC
 End Function
 
 '''''''''''
+'@desc:     get text value of each cells in the array
+'@return:   two-dimensional array containing format as text
+'@param:    rng             as target Range
+'''''''''''
+Public Function rngToTextArr(ByRef rng As Range) As Variant
+    Dim i, j
+    Dim res()
+    Dim cnt As Long
+    cnt = 0
+    
+    Dim w As Long
+    Dim h As Long
+    
+    w = rng.Columns.Count
+    h = rng.Rows.Count
+    
+    ReDim res(0 To h - 1, 0 To w - 1)
+    
+    For i = 0 To h - 1
+        For j = 0 To w - 1
+            res(i, j) = CStr(rng.Cells(i + 1, j + 1).Text)
+        Next j
+    Next i
+    
+    rngToTextArr = res
+    
+    Erase res
+
+End Function
+
+
+
+'''''''''''
 '@desc:     get one-dimensional array based on the range
 '@return:   one-dimensional array containing value or address
 '@param:    rng             as target Range
 '           isVertical      if true, data entries ranged vertically, i.e. model vlookup
 '           asAddress       keep the address as the content of the array
+'           asText          keep the format of the range
 '''''''''''
-Public Function rngToArr(ByRef rng As Range, Optional ByVal isVertical As Boolean = True, Optional ByVal asAddress As Boolean = False) As Variant
+Public Function rngToArr(ByRef rng As Range, Optional ByVal isVertical As Boolean = True, Optional ByVal asAddress As Boolean = False, Optional ByVal asText As Boolean = False) As Variant
     
     Dim i
     Dim res()
@@ -372,12 +407,17 @@ Public Function rngToArr(ByRef rng As Range, Optional ByVal isVertical As Boolea
     ' fill in the arr
     If rng.Cells.Count = 1 Then
         ReDim arr(1 To 1, 1 To 1)
-        arr(1, 1) = IIf(asAddress, rng.Address, rng.value)
+        arr(1, 1) = IIf(asText, rng.Text, IIf(asAddress, rng.Address, rng.value))
     Else
         If asAddress Then
             arr = rngToAddress(rng)
         Else
-            arr = rng.value
+            If asText Then
+                ' TODO
+                arr = rngToTextArr(rng)
+            Else
+                arr = rng.value
+            End If
         End If
     End If
     
@@ -424,8 +464,8 @@ Public Function rngToAddress(ByRef rng As Range, Optional ByVal withShtName As B
     
     Dim shtName As String
     Dim wbName As String
-    shtName = "'" & fst.Worksheet.Name & "'!"
-    wbName = "'[" & fst.Worksheet.parent.Name & "]" & fst.Worksheet.Name & "'!"
+    shtName = "'" & fst.Worksheet.name & "'!"
+    wbName = "'[" & fst.Worksheet.parent.name & "]" & fst.Worksheet.name & "'!"
         
     Dim i As Long
     Dim j As Long
@@ -454,7 +494,7 @@ End Function
 '           n               the n-th row, if isVertical else the n-th column
 '           isVertical      if true, data entries ranged vertically, i.e. model vlookup
 '''''''''''
-Private Function sliceArr(arr, ByVal n As Long, Optional ByVal isVertical As Boolean = True) As Variant
+Public Function sliceArr(arr, Optional ByVal n As Long = 0, Optional ByVal isVertical As Boolean = True) As Variant
     
     Dim i
     Dim res()
@@ -578,13 +618,13 @@ End Function
 '@param:    arr             two-dimensional array
 '           n               the n-th row, if isVertical else the n-th column
 '''''''''''
-Function rngToDict(ByRef keyRng As Range, ByRef valRng As Range, Optional ByVal isReversed As Boolean = False, Optional ByVal asAddress As Boolean = False) As Dicts
+Function rngToDict(ByRef keyRng As Range, ByRef valRng As Range, Optional ByVal isReversed As Boolean = False, Optional ByVal asAddress As Boolean = False, Optional ByVal asText As Boolean = False) As Dicts
     
     ' if the keyRng contains only one column, it is vertical
     Dim isVertical As Boolean
     isVertical = keyRng.Columns.Count = 1
     
-    Set rngToDict = arrToDict(rngToArr(keyRng, Not isVertical), IIf(IIf(isVertical, valRng.Columns.Count, valRng.Rows.Count) = 1, rngToArr(valRng, Not isVertical, asAddress), rngToArr(valRng, isVertical, asAddress)), isReversed)
+    Set rngToDict = arrToDict(rngToArr(keyRng, Not isVertical), IIf(IIf(isVertical, valRng.Columns.Count, valRng.Rows.Count) = 1, rngToArr(valRng, Not isVertical, asAddress, asText), rngToArr(valRng, isVertical, asAddress, asText)), isReversed)
 End Function
 
 '''''''''''
@@ -601,7 +641,7 @@ End Function
 '           appendMode      keep the old data if evoked multiple times
 '           isVertical      vlook if true
 '''''''''''
-Public Function load(Optional ByVal sht As String = "", Optional ByVal KeyCol As Long = 1, Optional ByVal valCol = 1, Optional RowBegine As Variant = 1, Optional ByVal RowEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False, Optional ByVal isVertical As Boolean = True) As Dicts
+Public Function load(Optional ByVal sht As String = "", Optional ByVal KeyCol As Long = 1, Optional ByVal valCol = 1, Optional RowBegine As Variant = 1, Optional ByVal RowEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False, Optional ByVal isVertical As Boolean = True, Optional ByRef asText As Boolean = False) As Dicts
     Dim keyRng As Range
     Set keyRng = getRange(sht, KeyCol, KeyCol, RowBegine, RowEnd, wb, isVertical)
     
@@ -609,9 +649,9 @@ Public Function load(Optional ByVal sht As String = "", Optional ByVal KeyCol As
     Set valRng = getRange(sht, KeyCol, valCol, RowBegine, RowEnd, wb, isVertical)
     
     If Count = 0 Or Not appendMode Then
-        Set load = rngToDict(keyRng, valRng, Reversed, asAddress)
+        Set load = rngToDict(keyRng, valRng, Reversed, asAddress, asText)
     Else
-       Set load = union(createInstance(Me.rngToDict(keyRng, valRng, Reversed, asAddress)))
+       Set load = union(createInstance(Me.rngToDict(keyRng, valRng, Reversed, asAddress, asText)))
     End If
 
     Set keyRng = Nothing
@@ -619,8 +659,8 @@ Public Function load(Optional ByVal sht As String = "", Optional ByVal KeyCol As
     
 End Function
 
-Public Function loadH(Optional ByVal sht As String = "", Optional ByVal KeyRow As Long = 1, Optional ByVal ValRow = 1, Optional ColBegine As Variant = 1, Optional ByVal ColEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False) As Dicts
-    Set loadH = load(sht:=sht, KeyCol:=KeyRow, valCol:=ValRow, RowBegine:=ColBegine, RowEnd:=ColEnd, wb:=wb, Reversed:=Reversed, asAddress:=asAddress, appendMode:=appendMode, isVertical:=False)
+Public Function loadH(Optional ByVal sht As String = "", Optional ByVal KeyRow As Long = 1, Optional ByVal ValRow = 1, Optional ColBegine As Variant = 1, Optional ByVal ColEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False, Optional ByRef asText As Boolean = False) As Dicts
+    Set loadH = load(sht:=sht, KeyCol:=KeyRow, valCol:=ValRow, RowBegine:=ColBegine, RowEnd:=ColEnd, wb:=wb, Reversed:=Reversed, asAddress:=asAddress, appendMode:=appendMode, isVertical:=False, asText:=asText)
 End Function
 
 '@desc update self with new dictionary obj
@@ -1434,7 +1474,7 @@ Private Function a_toString(ByVal arr As Variant, Optional ByVal lvl As Integer 
         res = "[ "
         
         For Each i In arr
-            If isBool(i) Or isEmpty(i) Or Not IsNumeric(i) Then
+            If IsDate(i) Or isBool(i) Or isEmpty(i) Or Not IsNumeric(i) Then
                 res = res & x_toString(i, lvl + 1) & ", "
             Else
                 res = res & Replace(" " & i, ",", ".") & ", "
@@ -1485,7 +1525,13 @@ Public Function x_toString(x As Variant, Optional ByVal lvl As Integer = 0) As S
                     x_toString = "null"
                 Else
                     If IsDate(x) Then
-                        x_toString = """" & Format(x, "yyyy-mm-dd") & """"
+                        '  date string can be both string and date
+                        
+                        If TypeName(x) = "String" Then
+                            x_toString = """" & x & """"
+                        Else
+                            x_toString = """" & Format(x, "yyyy-mm-dd") & """"
+                        End If
                     Else
                         If TypeName(x) = "Boolean" Then
                             x_toString = IIf(x, "true", "false")
@@ -1540,7 +1586,7 @@ Public Function toJSON(Optional ByVal exportTo As String) As String
         Set fso = CreateObject("scripting.filesystemobject")
         
         Dim targPath As String
-        targPath = ThisWorkbook.Path & "\" & exportTo
+        targPath = ThisWorkbook.path & "\" & exportTo
         
         Dim ts As Object
         Set ts = fso.createtextfile(targPath)
@@ -1837,4 +1883,3 @@ Public Function numericFromString(ByRef s As String, ByRef i As Long) As Double
         i = i + 1
     Loop
 End Function
-
