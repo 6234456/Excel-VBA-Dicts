@@ -3,9 +3,9 @@
 '@author                                   Qiou Yang
 '@license                                  MIT
 '@dependency                               Lists, Nodes, TreeSets
-'@lastUpdate                               11.12.2019
-'                                          add load cell text
-'                                          load does not change the underlying object in place
+'@lastUpdate                               30.12.2019
+'                                          minor bugfix  rng
+'
 '@TODO                                     add comments
 '                                          unify the Exception-Code
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -302,7 +302,7 @@ Function getTargetSht(Optional ByVal targSht As String = "", Optional ByRef wb A
     With tmpWb
         Dim tmpname As String
         
-        tmpname = ActiveSheet.name
+        tmpname = ActiveSheet.Name
         If Trim(targSht) = "" Then
             targSht = tmpname
         End If
@@ -464,8 +464,8 @@ Public Function rngToAddress(ByRef rng As Range, Optional ByVal withShtName As B
     
     Dim shtName As String
     Dim wbName As String
-    shtName = "'" & fst.Worksheet.name & "'!"
-    wbName = "'[" & fst.Worksheet.parent.name & "]" & fst.Worksheet.name & "'!"
+    shtName = "'" & fst.Worksheet.Name & "'!"
+    wbName = "'[" & fst.Worksheet.parent.Name & "]" & fst.Worksheet.Name & "'!"
         
     Dim i As Long
     Dim j As Long
@@ -1586,7 +1586,7 @@ Public Function toJSON(Optional ByVal exportTo As String) As String
         Set fso = CreateObject("scripting.filesystemobject")
         
         Dim targPath As String
-        targPath = ThisWorkbook.path & "\" & exportTo
+        targPath = ThisWorkbook.Path & "\" & exportTo
         
         Dim ts As Object
         Set ts = fso.createtextfile(targPath)
@@ -1649,13 +1649,19 @@ Public Function rng(ByVal start, ByVal ending, Optional ByVal steps As Long = 1)
         cnt = cnt + 1
     Next i
     
-    ReDim res(0 To cnt)
-    
-    For i = start To ending Step steps
-        res(i - start) = i
-    Next i
-    
-    rng = res
+    If cnt > 0 Then
+        ReDim res(0 To cnt)
+        Dim tmp As Integer
+        tmp = 0
+        
+        For i = start To ending Step steps
+            res(tmp) = i
+            tmp = tmp + 1
+        Next i
+        rng = res
+    Else
+        rng = Array()
+    End If
 End Function
 
 Public Function y(Optional ByVal sht As String = "", Optional ByVal col As Long = 1, Optional ByVal wb As Workbook) As Long
@@ -1883,3 +1889,4 @@ Public Function numericFromString(ByRef s As String, ByRef i As Long) As Double
         i = i + 1
     Loop
 End Function
+                                                                                  
