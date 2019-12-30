@@ -2,9 +2,9 @@
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               28.06.2019
-'                                          remove the redundant functions, 
-'                                          remove destructor which may cause bug in 64 bit env, 
+'@lastUpdate                               30.12.2019
+'                                          add function last
+'                                          remove destructor which may cause bug in 64 bit env,
 '                                          add support for Collection
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -272,6 +272,16 @@ Public Function ones(ByVal n As Long) As Lists
     
     Set ones = Me.fromSerial(1, n).map("_/({i}+1)")
     
+End Function
+
+Public Function last() As Variant
+
+    If IsObject(Me.getVal(Me.length - 1)) Then
+        Set last = Me.getVal(Me.length - 1)
+    Else
+        last = Me.getVal(Me.length - 1)
+    End If
+
 End Function
 
 Public Function add(ele, Optional ByVal keepOldElements As Boolean = True) As Lists
@@ -930,7 +940,7 @@ Public Function judgeReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        res.add reg.Test(Me.getVal(i))
+        res.add reg.test(Me.getVal(i))
     Next i
     
     Set judgeReg = res
@@ -943,7 +953,7 @@ Public Function mapReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        If reg.Test(Me.getVal(i)) Then
+        If reg.test(Me.getVal(i)) Then
             res.add reg.Execute(Me.getVal(i))(0).submatches(0)
         Else
             res.add Me.getVal(i)
