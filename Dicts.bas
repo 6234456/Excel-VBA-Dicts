@@ -3,8 +3,8 @@
 '@author                                   Qiou Yang
 '@license                                  MIT
 '@dependency                               Lists, Nodes, TreeSets
-'@lastUpdate                               30.12.2019
-'                                          minor bugfix  rng
+'@lastUpdate                               05.02.2020
+'                                          minor bugfix  reduce
 '
 '@TODO                                     add comments
 '                                          unify the Exception-Code
@@ -1181,7 +1181,7 @@ Public Function ranged(ByVal operation As String, Optional ByVal placeholder As 
     
     If aggregate = AggregateMethod.AggReduce Then
         For Each k In Me.Keys
-            res.Item(k) = l.addAll(Me.Item(k), False).reduce(operation, initialVal, placeholder, placeholderInitialVal, replaceDecimalPoint)
+            res.Item(k) = l.addAll(Me.Item(k), False).reduce(operation, initialVal, placeholder, placeholderInitialVal, idx, replaceDecimalPoint)
         Next k
     ElseIf aggregate = AggregateMethod.AggMap Then
          For Each k In Me.Keys
@@ -1890,3 +1890,4 @@ Public Function numericFromString(ByRef s As String, ByRef i As Long) As Double
     Loop
 End Function
                                                                                   
+                                                                                 
