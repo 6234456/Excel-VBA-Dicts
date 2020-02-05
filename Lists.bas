@@ -2,7 +2,7 @@
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               30.12.2019
+'@lastUpdate                               05.02.2020
 '                                          add function last
 '                                          remove destructor which may cause bug in 64 bit env,
 '                                          add support for Collection
@@ -940,7 +940,7 @@ Public Function judgeReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        res.add reg.test(Me.getVal(i))
+        res.add reg.Test(Me.getVal(i))
     Next i
     
     Set judgeReg = res
@@ -953,7 +953,7 @@ Public Function mapReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        If reg.test(Me.getVal(i)) Then
+        If reg.Test(Me.getVal(i)) Then
             res.add reg.Execute(Me.getVal(i))(0).submatches(0)
         Else
             res.add Me.getVal(i)
@@ -985,7 +985,7 @@ Public Function nullVal(Optional setValTo As Variant) As Lists
     Set res = Nothing
 End Function
 
-Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True) As Variant
+Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal idx As String = "{i}", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0) As Variant
     Dim res
     Dim i
     
@@ -996,12 +996,12 @@ Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, O
     
     If replaceDecimalPoint Then
         For Each i In Me.toArray
-            res = Application.Evaluate(Replace(Replace(Replace(operation, placeholder, Replace("" & i, ",", ".")), placeholderInitialVal, Replace("" & res, ",", ".")), idx, cnt))
+            res = Application.Evaluate(Replace(Replace(Replace(operation, placeholder, Replace("" & IIf(isEmpty(i), setNullValTo, i), ",", ".")), placeholderInitialVal, Replace("" & res, ",", ".")), idx, cnt))
             cnt = cnt + 1
         Next i
     Else
         For Each i In Me.toArray
-            res = Application.Evaluate(Replace(Replace(Replace(operation, placeholder, "" & i), placeholderInitialVal, "" & res), idx, cnt))
+            res = Application.Evaluate(Replace(Replace(Replace(operation, placeholder, "" & IIf(isEmpty(i), setNullValTo, i)), placeholderInitialVal, "" & res), idx, cnt))
             cnt = cnt + 1
         Next i
     End If
