@@ -2,7 +2,7 @@
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               05.02.2020
+'@lastUpdate                               06.02.2020
 '                                          add function last
 '                                          remove destructor which may cause bug in 64 bit env,
 '                                          add support for Collection
@@ -972,12 +972,20 @@ Public Function nullVal(Optional setValTo As Variant) As Lists
     If IsMissing(setValTo) Then
         For i = 0 To Me.length - 1
             If Not isEmpty(Me.getVal(i)) Then
-                res.add Me.getVal(i)
+                If Me.isLists(Me.getVal(i)) Then
+                    res.add Me.getVal(i).nullVal()
+                Else
+                    res.add Me.getVal(i)
+                End If
             End If
         Next i
     Else
         For i = 0 To Me.length - 1
-            res.add IIf(isEmpty(Me.getVal(i)), setValTo, Me.getVal(i))
+             If Me.isLists(Me.getVal(i)) Then
+                res.add Me.getVal(i).nullVal(setValTo)
+            Else
+                res.add IIf(isEmpty(Me.getVal(i)), setValTo, Me.getVal(i))
+            End If
         Next i
     End If
 
