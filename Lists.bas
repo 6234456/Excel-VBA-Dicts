@@ -2,8 +2,9 @@
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               06.02.2020
-'                                          add function last
+'@lastUpdate                               10.02.2020
+'                                          minor bugfix  addAll by rng
+'                                          unboxing by fromRng to load 1 by N as listed List
 '                                          remove destructor which may cause bug in 64 bit env,
 '                                          add support for Collection
 '@TODO                                     optional params
@@ -117,9 +118,9 @@ Public Function isLists(testObj As Variant) As Boolean
    isLists = TypeName(testObj) = "Lists"
 End Function
 
-'in case of 1 * N or N * 1 matrix, return 1-dimensional array
+'in case of 1 * N or N * 1 matrix and unboxing set to true, return 1-dimensional array
 
-Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String = "v") As Lists
+Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String = "v", Optional ByVal unboxing As Boolean = True) As Lists
     Dim res As New Lists
     
     Dim rowNum As Integer
@@ -129,7 +130,7 @@ Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String
     
     Dim i
     
-    If rowNum = 1 Or colNum = 1 Then
+    If unboxing And (rowNum = 1 Or colNum = 1) Then
         res.addAll rng
     Else
         Dim tmp As New Lists
@@ -140,7 +141,7 @@ Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String
     End If
     
     If orientation = "h" Or orientation = "H" Then
-        If rowNum = 1 Or colNum = 1 Then
+        If unboxing And (rowNum = 1 Or colNum = 1) Then
             Dim res1 As New Lists
             Dim tmp1 As New Lists
             
@@ -384,9 +385,13 @@ Public Function addAll(arr, Optional ByVal keepOldElements As Boolean = True) As
             Me.add arr.getVal(i)
         Next i
     ElseIf TypeName(arr) = "Range" Then
-        For Each i In arr.value
-            Me.add i
-        Next i
+        If arr.Cells.Count = 1 Then
+            Me.add arr.Cells(1).value
+        Else
+            For Each i In arr.value
+                Me.add i
+            Next i
+        End If
     ElseIf IsArray(arr) Then
         If Not isArrayEmpty(arr) Then
             For Each i In arr
@@ -940,7 +945,7 @@ Public Function judgeReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        res.add reg.Test(Me.getVal(i))
+        res.add reg.test(Me.getVal(i))
     Next i
     
     Set judgeReg = res
@@ -953,7 +958,7 @@ Public Function mapReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        If reg.Test(Me.getVal(i)) Then
+        If reg.test(Me.getVal(i)) Then
             res.add reg.Execute(Me.getVal(i))(0).submatches(0)
         Else
             res.add Me.getVal(i)
