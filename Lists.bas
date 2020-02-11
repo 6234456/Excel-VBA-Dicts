@@ -2,12 +2,12 @@
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               10.02.2020
-'                                          minor bugfix  addAll by rng
+'@lastUpdate                               12.02.2020
+'                                          add sortX
 '                                          unboxing by fromRng to load 1 by N as listed List
 '                                          remove destructor which may cause bug in 64 bit env,
 '                                          add support for Collection
-'@TODO                                     optional params
+'@TODO                                     optional params, shuffle
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
@@ -260,6 +260,49 @@ Private Function serial(ByVal start As Long, ByVal ending As Long, Optional ByVa
     End If
     
     serial = res
+End Function
+
+' Transfer hierarchy to square matrix
+' { "2" :   {
+'   "B" :   3,
+'   "C" :   9}}
+'  to
+' 2 B 3
+' 2 C 9
+
+' Dict -> [[k, v], [k1, v1], ... ]
+Public Function fromDict(ByRef d As Dicts) As Lists
+    
+    Dim l As New Lists
+    Dim e
+    
+    For Each e In d.Keys
+        If TypeName(d.Item(e)) = "Dicts" Then
+            l.addAll l.fromDict(d.Item(e)).prependToAllLists__(e)
+        Else
+            l.add l.of(e, d.Item(e))
+        End If
+    Next e
+    
+    Set fromDict = l
+    Set l = Nothing
+    
+End Function
+
+Public Function prependToAllLists__(e) As Lists
+    
+    If Me.length > 0 Then
+    
+        Dim i
+        
+        For i = 0 To Me.length - 1
+            Me.setVal i, Me.getVal(i).unshift(e)
+        Next i
+    
+    End If
+    
+    Set prependToAllLists__ = Me
+    
 End Function
 
 Public Function fromSerial(ByVal start As Long, ByVal ending As Long, Optional ByVal steps As Long = 1) As Lists
@@ -1277,3 +1320,80 @@ Private Sub QuickSort(vArray As Variant, ByVal inLow As Integer, ByVal inHi As I
   If (tmpLow < inHi) Then QuickSort vArray, tmpLow, inHi
 
 End Sub
+
+
+Public Function swap(ByVal index1 As Long, ByVal index2 As Long) As Lists
+    
+    Dim x
+    
+    If IsObject(Me.getVal(index1)) Then
+        Set x = Me.getVal(index1)
+    Else
+        x = Me.getVal(index1)
+    End If
+    
+    Me.setVal index1, Me.getVal(index2)
+    Me.setVal index2, x
+    
+    Set swap = Me
+
+End Function
+
+Public Function sortX(Optional ByVal callback As String = "callback")
+    sortX__ 0, Me.length - 1, callback
+End Function
+
+' signature of callback should be,
+' sub callback_judgement(byref l as Lists, e1, e2)
+' update Me.callback
+' if return value > 0 gt  = 0 eq  < 0 lt
+
+Private Function sortX__(ByVal inLow As Integer, ByVal inHi As Integer, Optional ByVal callback As String = "callback")
+
+  Dim pivot
+  Dim tmpSwap
+  Dim tmpLow  As Integer
+  Dim tmpHi   As Integer
+
+  tmpLow = inLow
+  tmpHi = inHi
+
+    If IsObject(Me.getVal((inLow + inHi) \ 2)) Then
+        Set pivot = Me.getVal((inLow + inHi) \ 2)
+    Else
+        pivot = Me.getVal((inLow + inHi) \ 2)
+    End If
+  
+' Application.Run(callback, pivot, Me, Me.getVal(tmpHi)) > 1
+  While (tmpLow <= tmpHi)
+
+     Do While (tmpLow < inHi)
+     
+        Application.Run callback, Me, Me.getVal(tmpLow), pivot
+        If Me.callback <= 0 Then
+            Exit Do
+        End If
+     
+        tmpLow = tmpLow + 1
+     Loop
+
+     Do While (tmpHi > inLow)
+       Application.Run callback, Me, pivot, Me.getVal(tmpHi)
+       If Me.callback <= 0 Then
+            Exit Do
+        End If
+        tmpHi = tmpHi - 1
+     Loop
+
+     If (tmpLow <= tmpHi) Then
+        Me.swap tmpLow, tmpHi
+        tmpLow = tmpLow + 1
+        tmpHi = tmpHi - 1
+     End If
+
+  Wend
+
+  If (inLow < tmpHi) Then sortX__ inLow, tmpHi, callback
+  If (tmpLow < inHi) Then sortX__ tmpLow, inHi, callback
+
+End Function
