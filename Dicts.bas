@@ -3,8 +3,8 @@
 '@author                                   Qiou Yang
 '@license                                  MIT
 '@dependency                               Lists, Nodes, TreeSets
-'@lastUpdate                               05.02.2020
-'                                          minor bugfix  reduce
+'@lastUpdate                               12.02.2020
+'                                          add mapX, filterX, productX
 '
 '@TODO                                     add comments
 '                                          unify the Exception-Code
@@ -30,6 +30,9 @@ Private pLabeledArray As Dicts
 Private pWb As Workbook
 
 Private pList As Lists
+
+Private pResKey                ' res for the callback map/reduce/filter
+Private pResVal
 
 ' enum for the parameters in filter/reduce/map
 Enum ProcessWith
@@ -74,6 +77,38 @@ End Property
 ' get the underlying Dicitionary-Object
 Public Property Get dict() As Dicts
     Set dict = Me
+End Property
+
+Public Property Let callbackKey(res)
+    If IsObject(res) Then
+        Set pResKey = res
+    Else
+        pResKey = res
+    End If
+End Property
+
+Public Property Get callbackKey()
+    If IsObject(pResKey) Then
+        Set callbackKey = pResKey
+    Else
+        callbackKey = pResKey
+    End If
+End Property
+
+Public Property Let callbackVal(res)
+    If IsObject(res) Then
+        Set pResVal = res
+    Else
+        pResVal = res
+    End If
+End Property
+
+Public Property Get callbackVal()
+    If IsObject(pResVal) Then
+        Set callbackVal = pResVal
+    Else
+        callbackVal = pResVal
+    End If
 End Property
 
 Public Function add(k, v) As Dicts
@@ -277,6 +312,27 @@ End Property
 Public Property Get Keys() As Variant
     Keys = pKeys.toArray
 End Property
+
+
+' transfer N * 2 Matrix into Dicts [[k,v]] -> Dicts(k, v)
+Public Function fromMatrix(ByRef l As Lists) As Dicts
+    
+    Dim res As New Dicts
+    
+    If l.length > 0 Then
+        Dim i
+        
+        For i = 0 To l.length - 1
+            res.add l.getVal(i, 0), l.getVal(i, 1)
+        Next i
+        
+    End If
+    
+    Set fromMatrix = res
+    Set res = Nothing
+    
+End Function
+
 
 Public Function fromArray(ByRef arr) As Dicts
     If IsArray(arr) Then
@@ -1072,6 +1128,30 @@ Public Function update(ByVal dict2 As Dicts) As Dicts
     
 End Function
 
+' signature of callback should be,
+' sub callback(byref d as Dicts, k, v, optional byval i as Long)
+' update Me.callbackKey
+
+Public Function reduceX(Optional ByVal callback As String = "callback", Optional initVal = 0)
+
+    Dim i
+    
+    Me.callbackKey = initVal
+
+    For Each i In Me.Keys
+        Application.Run callback, Me, i, Me.Item(i), i
+    Next i
+    
+    If IsObject(pResKey) Then
+        Set reduceX = pResKey
+    Else
+        reduceX = pResKey
+    End If
+    
+End Function
+
+
+
 Public Function reduce(ByVal operation As String, ByVal initialVal As Variant, Optional ByVal placeholder As String = "_", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal reduceWith As Long = ProcessWith.value) As Variant
      Dim l As New Lists
      
@@ -1105,6 +1185,76 @@ Public Function reduceRngVertical(Optional ByVal operation As String = "?+_", Op
     Set reduceRngVertical = l
     Set l = Nothing
     pList.clear
+End Function
+
+' signature of callback should be,
+' sub callback_judgement(byref d as Dicts, k, v, optional byval i as Long)
+' update Me.callbackKey
+
+Public Function filterX(Optional ByVal callback As String = "callback") As Dicts
+
+    Dim res As New Dicts
+    Dim i
+    
+    Dim cnt As Long
+    
+
+    For Each i In Me.Keys
+        Application.Run callback, Me, i, Me.Item(i), cnt
+        If pResKey Then
+            res.add i, Me.Item(i)
+        End If
+        
+        cnt = cnt + 1
+    Next i
+    
+    Set filterX = res
+    Set res = Nothing
+End Function
+
+' signature of callback should be,
+' sub callback(byref d as Dicts, k, v, optional byval i as Long)
+' update Me.callbackVal / Me.callbackKey
+
+Public Function mapX(Optional ByVal callback As String = "callback") As Dicts
+    Dim res As New Dicts
+    Dim k
+    
+    Dim i As Long
+    
+    For Each k In Me.Keys
+        Application.Run callback, Me, k, Me.Item(k), i
+        res.add pResKey, pResVal
+        i = i + 1
+    Next k
+    
+    Set mapX = res
+    Set res = Nothing
+End Function
+
+' signature of callback should be,
+' sub callback(byref d as Dicts, k, v_self, v_other, optional byval i as Long)
+' update Me.callbackVal / Me.callbackKey
+
+Public Function productX(ByRef other As Dicts, Optional ByVal callback As String = "callback") As Dicts
+
+    If Me.diff(other).Count > 0 Then
+        Err.Raise 9999, , "Incomplete reference Dicts "
+    End If
+
+    Dim res As New Dicts
+    Dim k
+    
+    Dim i As Long
+    
+    For Each k In Me.Keys
+        Application.Run callback, Me, k, Me.Item(k), other.Item(k), i
+        res.add pResKey, pResVal
+        i = i + 1
+    Next k
+    
+    Set productX = res
+    Set res = Nothing
 End Function
 
 ''''''''''''
@@ -1889,5 +2039,3 @@ Public Function numericFromString(ByRef s As String, ByRef i As Long) As Double
         i = i + 1
     Loop
 End Function
-                                                                                  
-                                                                                 
