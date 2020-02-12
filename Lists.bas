@@ -63,12 +63,18 @@ Public Function toDict() As Dicts
 
 End Function
 
-Public Function toMap() As Dicts
+'[[k, v]] -> Dict
+Public Function toMap(Optional ByVal asArr As Boolean = False) As Dicts
     Dim res As New Dicts
   
     Dim i
+    
     For i = 0 To pLen - 1
-        res.dict.add i, Me.getVal(i)
+        If asArr Then
+            res.dict.add i, Me.getVal(i).toArray
+        Else
+            res.dict.add i, Me.getVal(i)
+        End If
     Next i
     
     Set toMap = res
@@ -306,10 +312,7 @@ Public Function prependToAllLists__(e) As Lists
 End Function
 
 Public Function fromSerial(ByVal start As Long, ByVal ending As Long, Optional ByVal steps As Long = 1) As Lists
-    
-    Me.clear
-    
-    Set fromSerial = Me.addAll(serial(start, ending, steps))
+    Set fromSerial = Me.fromArray(serial(start, ending, steps))
 End Function
 
 Public Function ones(ByVal n As Long) As Lists
@@ -988,7 +991,7 @@ Public Function judgeReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        res.add reg.test(Me.getVal(i))
+        res.add reg.Test(Me.getVal(i))
     Next i
     
     Set judgeReg = res
@@ -1001,7 +1004,7 @@ Public Function mapReg(ByVal reg As Object) As Lists
     Dim res As New Lists
     
     For i = 0 To Me.length - 1
-        If reg.test(Me.getVal(i)) Then
+        If reg.Test(Me.getVal(i)) Then
             res.add reg.Execute(Me.getVal(i))(0).submatches(0)
         Else
             res.add Me.getVal(i)
@@ -1397,3 +1400,4 @@ Private Function sortX__(ByVal inLow As Integer, ByVal inHi As Integer, Optional
   If (tmpLow < inHi) Then sortX__ tmpLow, inHi, callback
 
 End Function
+
