@@ -12,7 +12,7 @@ Sub Test()
     
    Debug.Assert l.fromArray(c0).getVal(2, 0) = 4
     
-    l.Clear
+    l.clear
     
     Dim dn As New Dicts
     dn.add 1, 2
@@ -20,8 +20,8 @@ Sub Test()
     Debug.Assert dn.union(l.fromSerial(1, 10).toMap).diff(dn).Count = 9
     Debug.Assert dn.Count = 1
     
-    dn.Clear
-    d.Clear
+    dn.clear
+    d.clear
     
     l.Remove 1
     l.removeAt 0
@@ -56,12 +56,12 @@ Sub Test()
     End With
     
     Dim l2 As New Lists
-    l.Clear
+    l.clear
     l.add l2
     l2.add d
     Debug.Assert TypeName(l.getVal(0, 0)) = "Dicts"
     
-    l.Clear
+    l.clear
     Debug.Assert l.of(1, 2, 3, 4, 5, Array(1, 2, 3)).length = 6
     
     Debug.Assert l.fromSerial(10, 15).mapX("Test.callback").slice(-1).getVal(0) = "225_"
@@ -76,8 +76,8 @@ Sub Test()
      Debug.Assert .length = 4 * 3 * 2 * 1
     End With
     
-    d.Clear
-    l.Clear
+    d.clear
+    l.clear
     
     
     d.add 1, Array(l.of(1, 2, 3), 2, 3, 4)
@@ -123,7 +123,36 @@ Sub Test()
     
     Debug.Assert IsNull(t.ceiling(14))
     
+    
+    
+    d.clear
+    l.clear
+    
+    d.fromMatrix(l.fromSerial(0, 10).zip(l.fromSerial(2, 12))).mapX("callback_dict").filterX("callback_judgement_dict").p
+    
+
+    Debug.Assert d.fromMatrix(l.fromArray(Array(Array(1, 2), Array(3, 4)))).reduceX("callback_d") = 10
+    
     Debug.Print "All tests passed!"
+    
+End Sub
+
+Sub callback_d(ByRef d As Dicts, k, v, Optional ByVal i As Long)
+    
+    d.callbackKey = d.callbackKey + k + v
+
+End Sub
+
+Sub callback_dict(ByRef d As Dicts, k, v, Optional ByVal i As Long)
+    
+    d.callbackKey = k * 3
+    d.callbackVal = v + 5
+
+End Sub
+
+Sub callback_judgement_dict(ByRef d As Dicts, k, v, Optional ByVal i As Long)
+    ' get last 3
+    d.callbackKey = i > d.Count - 5
     
 End Sub
 
