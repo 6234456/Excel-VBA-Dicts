@@ -3,15 +3,15 @@
 '@dependency                               Lists, Nodes
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               28.06.2019
+'@lastUpdate                               18.02.2020
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Option Explicit
 
 
-Private pLen  As Integer
+Private pLen  As Long
 Private pRoot As Nodes
-Private pCnt As Integer
+Private pCnt As Long
 
 Private Sub Class_Initialize()
     init
@@ -105,7 +105,7 @@ Public Function isEmpty() As Boolean
     isEmpty = pLen = 0
 End Function
 
-Public Function size() As Integer
+Public Function size() As Long
     size = pLen
 End Function
 
@@ -143,7 +143,7 @@ Public Function Remove(e As Variant) As Boolean
     Dim res As Boolean
     res = False
     
-    Dim tmp As Integer
+    Dim tmp As Long
     
     Call remove_(e, pRoot, parent, res, tmp)
     
@@ -156,7 +156,7 @@ Public Function Remove(e As Variant) As Boolean
 End Function
 
 
-Private Function remove_(ByVal e, ByRef n As Nodes, ByRef parent As Nodes, ByRef res As Boolean, ByRef tmp As Integer)
+Private Function remove_(ByVal e, ByRef n As Nodes, ByRef parent As Nodes, ByRef res As Boolean, ByRef tmp As Long)
     
     If e = n.value Then
         ' appendNode will add one back
@@ -216,11 +216,11 @@ Private Function ceiling_(ByVal e, ByRef n As Nodes, ByRef res As Nodes)
     End If
 End Function
 
-Public Property Get length() As Integer
+Public Property Get length() As Long
     length = pLen
 End Property
 
-Public Property Get Count() As Integer
+Public Property Get Count() As Long
     Count = pCnt
 End Property
 
@@ -249,7 +249,7 @@ Public Function add(val As Variant, Optional ByVal updateIfDuplicated As Boolean
 
 End Function
 
-Private Function appendNode(ByRef n As Nodes, ByRef root As Nodes, ByRef l As Integer, Optional ByVal updateIfDuplicated As Boolean = False)
+Private Function appendNode(ByRef n As Nodes, ByRef root As Nodes, ByRef l As Long, Optional ByVal updateIfDuplicated As Boolean = False)
     
     Dim targVal, rootVal
     
