@@ -2,12 +2,12 @@
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               12.02.2020
-'                                          add sortX
+'@lastUpdate                               18.02.2020
+'                                          add shuffle, length of the Lists is Long
 '                                          unboxing by fromRng to load 1 by N as listed List
 '                                          remove destructor which may cause bug in 64 bit env,
 '                                          add support for Collection
-'@TODO                                     optional params, shuffle
+'@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 
@@ -16,8 +16,8 @@ Option Explicit
 
 
 Private pArr() As Variant   ' the underlying array object
-Private pMaxLen As Integer  ' the maximal length of array object
-Private pLen As Integer     ' the length of current List Object
+Private pMaxLen As Long  ' the maximal length of array object
+Private pLen As Long     ' the length of current List Object
 
 Private pRes                ' res for the callback map/reduce/filter
 
@@ -37,7 +37,7 @@ Public Property Get callback()
     End If
 End Property
 
-Public Property Get length() As Integer
+Public Property Get length() As Long
     length = pLen
 End Property
 
@@ -124,14 +124,33 @@ Public Function isLists(testObj As Variant) As Boolean
    isLists = TypeName(testObj) = "Lists"
 End Function
 
+Function random(from As Long, till As Long) As Long
+    random = Int(Rnd() * (till - from + 1)) + from
+End Function
+
+' change the Lists-Obj in place
+Function shuffle() As Lists
+    Dim i
+    Dim l As Long
+    l = Me.length - 1
+    
+    For i = 0 To l
+        Me.swap i, random(0, l)
+    Next i
+    
+    Set shuffle = Me
+
+End Function
+
+
 'in case of 1 * N or N * 1 matrix and unboxing set to true, return 1-dimensional array
 
 Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String = "v", Optional ByVal unboxing As Boolean = True) As Lists
     Dim res As New Lists
     
-    Dim rowNum As Integer
+    Dim rowNum As Long
     rowNum = rng.Rows.Count
-    Dim colNum As Integer
+    Dim colNum As Long
     colNum = rng.Columns.Count
     
     Dim i
@@ -188,7 +207,7 @@ Public Function toRng(ByRef rng As Range)
                 End If
             Next i
             
-            Dim maxLen As Integer
+            Dim maxLen As Long
             maxLen = lenArr.max_
             
             rng.Resize(1, maxLen).Cells.clear
@@ -208,7 +227,7 @@ End Function
 Public Function fromString(ByVal str As String) As Lists
     Dim l As New Lists
     
-    Dim i As Integer
+    Dim i As Long
     For i = 1 To Len(str)
         l.add Mid(str, i, 1)
     Next i
@@ -358,7 +377,7 @@ Public Function Remove(ByVal ele) As Lists
     End If
 End Function
 
-Public Function removeAt(ByVal index As Integer) As Lists
+Public Function removeAt(ByVal index As Long) As Lists
     Dim res As New Lists
     
     Set res = Me.slice(, index).addList(Me.slice(index + 1))
@@ -367,21 +386,21 @@ Public Function removeAt(ByVal index As Integer) As Lists
     Set removeAt = Me
 End Function
 
-Public Function addAt(ByVal ele, ByVal index As Integer) As Lists
+Public Function addAt(ByVal ele, ByVal index As Long) As Lists
     Dim res As Lists
     Set res = Me.slice(, index).add(ele).addList(Me.slice(index))
     Call override(res)
     Set addAt = Me
 End Function
 
-Public Function addAllAt(ByVal eles, ByVal index As Integer) As Lists
+Public Function addAllAt(ByVal eles, ByVal index As Long) As Lists
     Dim res As Lists
     Set res = Me.slice(, index).addAll(eles).addList(Me.slice(index))
     Call override(res)
     Set addAllAt = Me
 End Function
 
-Public Function replaceAllAt(ByVal eles, ByVal index As Integer) As Lists
+Public Function replaceAllAt(ByVal eles, ByVal index As Long) As Lists
     Dim res As Lists
     Set res = Me.slice(, index).addAll(eles).addList(Me.slice(index + 1))
     Call override(res)
@@ -497,7 +516,7 @@ Public Function zip(ParamArray l() As Variant) As Lists
     Dim res As New Lists
     
     
-    Dim targLen As Integer  ' the length of res
+    Dim targLen As Long  ' the length of res
     targLen = pLen
     
     Dim tmp
@@ -580,7 +599,7 @@ Public Function zipMe() As Lists
     End If
 End Function
 
-Public Function getVal(ByVal index As Integer, Optional ByVal index2)
+Public Function getVal(ByVal index As Long, Optional ByVal index2)
     If index >= pLen Or index < 0 Then
         Err.Raise 8888, , "ArrayIndexOutOfBoundException"
     End If
@@ -602,7 +621,7 @@ Public Function getVal(ByVal index As Integer, Optional ByVal index2)
 
 End Function
 
-Public Function setVal(ByVal index As Integer, ByVal ele As Variant) As Lists
+Public Function setVal(ByVal index As Long, ByVal ele As Variant) As Lists
     If index >= pLen Or index < 0 Then
         Err.Raise 8888, , "ArrayIndexOutOfBoundException"
     End If
@@ -616,8 +635,8 @@ Public Function setVal(ByVal index As Integer, ByVal ele As Variant) As Lists
     Set setVal = Me
 End Function
 
-Public Function indexOf(ByVal ele) As Integer
-    Dim i As Integer
+Public Function indexOf(ByVal ele) As Long
+    Dim i As Long
     Dim hasFound As Boolean
     hasFound = False
     
@@ -683,7 +702,7 @@ Public Function min_() As Variant
     Dim res
     res = pArr(0)
     
-    Dim i As Integer
+    Dim i As Long
 
     For i = 1 To pLen - 1
         If pArr(i) < res Then
@@ -698,7 +717,7 @@ Public Function max_() As Variant
     Dim res
     res = pArr(0)
     
-    Dim i As Integer
+    Dim i As Long
 
     For i = 1 To pLen - 1
         If pArr(i) > res Then
@@ -727,7 +746,7 @@ Public Function containsAll(ByVal arr) As Boolean
     containsAll = res
 End Function
 
-Public Function subList(ByVal fromIndex As Integer, ByVal toIndex As Integer) As Lists
+Public Function subList(ByVal fromIndex As Long, ByVal toIndex As Long) As Lists
     Set subList = Me.slice(fromIndex, toIndex, 1)
 End Function
 
@@ -1098,12 +1117,12 @@ Public Function product(ByVal operation As String, ByRef list2 As Lists, Optiona
     Dim res As New Lists
     
     
-    Dim i As Integer
+    Dim i As Long
     
     Dim cnt As Long
     cnt = 0
     
-    Dim targLen As Integer
+    Dim targLen As Long
     targLen = min__(pLen, list2.length) - 1
     
     If replaceDecimalPoint Then
@@ -1147,7 +1166,7 @@ Public Function slice(Optional ByVal fromIndex, Optional ByVal toIndex, Optional
     End If
     
     If fromIndex <> toIndex Then
-        Dim i As Integer
+        Dim i As Long
         
         If step > 0 Then
             For i = fromIndex To toIndex - 1 Step step
@@ -1178,7 +1197,7 @@ Public Function toArray() As Variant
     
     If pLen > 0 Then
         ReDim arr(0 To pLen - 1)
-        Dim i As Integer
+        Dim i As Long
      
         For i = 0 To pLen - 1
             If Not IsObject(pArr(i)) Then
@@ -1287,12 +1306,12 @@ Public Function copy() As Lists
 End Function
 
 
-Private Sub QuickSort(vArray As Variant, ByVal inLow As Integer, ByVal inHi As Integer)
+Private Sub QuickSort(vArray As Variant, ByVal inLow As Long, ByVal inHi As Long)
 
   Dim pivot   As Variant
   Dim tmpSwap As Variant
-  Dim tmpLow  As Integer
-  Dim tmpHi   As Integer
+  Dim tmpLow  As Long
+  Dim tmpHi   As Long
 
   tmpLow = inLow
   tmpHi = inHi
@@ -1351,12 +1370,12 @@ End Function
 ' update Me.callback
 ' if return value > 0 gt  = 0 eq  < 0 lt
 
-Private Function sortX__(ByVal inLow As Integer, ByVal inHi As Integer, Optional ByVal callback As String = "callback")
+Private Function sortX__(ByVal inLow As Long, ByVal inHi As Long, Optional ByVal callback As String = "callback")
 
   Dim pivot
   Dim tmpSwap
-  Dim tmpLow  As Integer
-  Dim tmpHi   As Integer
+  Dim tmpLow  As Long
+  Dim tmpHi   As Long
 
   tmpLow = inLow
   tmpHi = inHi
@@ -1400,4 +1419,3 @@ Private Function sortX__(ByVal inLow As Integer, ByVal inHi As Integer, Optional
   If (tmpLow < inHi) Then sortX__ tmpLow, inHi, callback
 
 End Function
-
