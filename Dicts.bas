@@ -3,7 +3,8 @@
 '@author                                   Qiou Yang
 '@license                                  MIT
 '@dependency                               Lists, Nodes, TreeSets
-'@lastUpdate                               12.02.2020
+'@lastUpdate                               18.02.2020
+'                                          minor bugfix
 '                                          add mapX, filterX, productX
 '
 '@TODO                                     add comments
@@ -843,8 +844,6 @@ Public Function frequencyCount(ByRef rng) As Dicts
                 End If
             End If
         Next k
-    Else
-        ' type undefined
     End If
 
     Set frequencyCount = res
@@ -1736,7 +1735,7 @@ Public Function toJSON(Optional ByVal exportTo As String) As String
         Set fso = CreateObject("scripting.filesystemobject")
         
         Dim targPath As String
-        targPath = ThisWorkbook.Path & "\" & exportTo
+        targPath = ThisWorkbook.path & "\" & exportTo
         
         Dim ts As Object
         Set ts = fso.createtextfile(targPath)
@@ -2039,3 +2038,4 @@ Public Function numericFromString(ByRef s As String, ByRef i As Long) As Double
         i = i + 1
     Loop
 End Function
+
