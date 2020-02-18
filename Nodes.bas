@@ -1,7 +1,7 @@
 Option Explicit
 
 
-Private pIndex As Integer
+Private pIndex As Long
 Private pLeft As Nodes  ' the maximal length of array object
 Private pRight As Nodes     ' the length of current List Object
 Private pVal As Variant      ' the type of the class
@@ -26,7 +26,7 @@ Public Property Let leftNode(ByRef n As Nodes)
     
 End Property
 
-Public Property Let index(ByVal i As Integer)
+Public Property Let index(ByVal i As Long)
     
     pIndex = i
 
@@ -38,7 +38,7 @@ Public Property Let RightNode(ByRef n As Nodes)
     
 End Property
 
-Public Property Get index() As Integer
+Public Property Get index() As Long
     
     index = pIndex
 
@@ -57,7 +57,7 @@ Public Property Get RightNode() As Nodes
 End Property
 
 
-Public Function init(ByRef l As Nodes, ByRef r As Nodes, ByVal i As Integer, ByVal val As Variant) As Nodes
+Public Function init(ByRef l As Nodes, ByRef r As Nodes, ByVal i As Long, ByVal val As Variant) As Nodes
     
     Set pLeft = l
     Set pRight = r
