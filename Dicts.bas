@@ -3,9 +3,9 @@
 '@author                                   Qiou Yang
 '@license                                  MIT
 '@dependency                               Lists, Nodes, TreeSets
-'@lastUpdate                               18.02.2020
+'@lastUpdate                               05.03.2020
 '                                          minor bugfix
-'                                          add mapX, filterX, productX
+'                                          add feed with shorten
 '
 '@TODO                                     add comments
 '                                          unify the Exception-Code
@@ -795,19 +795,23 @@ Public Function reset(Optional ByVal v As Variant = 0) As Dicts
 End Function
 
 ' incremental based on the data Dict feed
-Public Function feed(ByRef d As Dicts, Optional ByVal isIncremental As Boolean = False) As Dicts
+Public Function feed(ByRef d As Dicts, Optional ByVal isIncremental As Boolean = False, Optional ByVal shorten As Boolean = False) As Dicts
     
     Dim k
     
     For Each k In Me.Keys
        If isDict(Me.Item(k)) Then
-            Me.Item(k).feed d
+            Me.Item(k).feed d, shorten:=shorten
         Else
             If d.exists(k) Then
                 If isIncremental Then
                     Me.Item(k) = Me.Item(k) + d.Item(k)
                 Else
                     Me.Item(k) = d.Item(k)
+                End If
+            Else
+                If shorten Then
+                    Me.Remove k
                 End If
             End If
        End If
@@ -1735,7 +1739,7 @@ Public Function toJSON(Optional ByVal exportTo As String) As String
         Set fso = CreateObject("scripting.filesystemobject")
         
         Dim targPath As String
-        targPath = ThisWorkbook.path & "\" & exportTo
+        targPath = ThisWorkbook.Path & "\" & exportTo
         
         Dim ts As Object
         Set ts = fso.createtextfile(targPath)
@@ -2038,4 +2042,3 @@ Public Function numericFromString(ByRef s As String, ByRef i As Long) As Double
         i = i + 1
     Loop
 End Function
-
