@@ -2,8 +2,8 @@
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               18.02.2020
-'                                          add shuffle, length of the Lists is Long
+'@lastUpdate                               07.07.2020
+'                                          bugfix indexOf / add shuffle, length of the Lists is Long
 '                                          unboxing by fromRng to load 1 by N as listed List
 '                                          remove destructor which may cause bug in 64 bit env,
 '                                          add support for Collection
@@ -640,7 +640,7 @@ Public Function indexOf(ByVal ele) As Long
     Dim hasFound As Boolean
     hasFound = False
     
-    For i = 0 To pLen
+    For i = 0 To Me.length - 1
         If pArr(i) = ele Then
             hasFound = True
             Exit For
@@ -694,7 +694,15 @@ Private Function max__(a, b) As Variant
 End Function
 
 Public Function contains(ByVal ele) As Boolean
-    contains = Me.indexOf(ele) > -1
+    contains = False
+    Dim i As Long
+    For i = 0 To Me.length - 1
+        If Me.getVal(i) = ele Then
+            contains = True
+            Exit For
+        End If
+    Next i
+    
 End Function
 
 
