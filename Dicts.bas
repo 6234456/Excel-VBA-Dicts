@@ -2,9 +2,9 @@
 '@desc                                     Util Class Dicts
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@dependency                               Lists, Nodes, TreeSets
-'@lastUpdate                               05.03.2020
-'                                          minor bugfix
+'@dependency                               Lists, HashSets
+'@lastUpdate                               07.07.2020
+'                                          replace with HashSets
 '                                          add feed with shorten
 '
 '@TODO                                     add comments
@@ -17,7 +17,7 @@ Option Explicit
 '___________private variables_____________
 'implement TreeMaps Object
 
-Private pKeys As TreeSets
+Private pKeys As HashSets
 Private pVals As Collection
 Const pUpdate As Boolean = True ' to update if duplicated
 
@@ -52,7 +52,7 @@ End Enum
 Private Sub Class_Initialize()
     Set pWb = ThisWorkbook
     Set pList = New Lists
-    Set pKeys = New TreeSets
+    Set pKeys = New HashSets
     Set pVals = New Collection
 End Sub
 
@@ -113,8 +113,16 @@ Public Property Get callbackVal()
 End Property
 
 Public Function add(k, v) As Dicts
-    pKeys.add k, pUpdate
-    pVals.add v
+    Dim tmp
+    tmp = pKeys.ceiling(k, False)
+    If IsNull(tmp) Then
+        pKeys.add k, pUpdate
+        pVals.add v
+    Else
+        pKeys.add k, pUpdate
+        pVals.add v, before:=tmp + 1
+        pVals.Remove tmp + 2
+    End If
     Set add = Me
 End Function
 
@@ -123,30 +131,23 @@ Public Property Let Item(key As Variant, value As Variant)
 End Property
    
 Public Property Get Item(key As Variant) As Variant
-    Dim tmp As Nodes
-    Set tmp = pKeys.ceiling(key, True)
+    Dim tmp As Variant
+    tmp = pKeys.ceiling(key, False)
     
-    If tmp Is Nothing Then
+    If IsNull(tmp) Then
         Item = Null
     Else
-        If IsObject(pVals.Item(tmp.index + 1)) Then
-            Set Item = pVals.Item(tmp.index + 1)
+        If IsObject(pVals.Item(tmp + 1)) Then
+            Set Item = pVals.Item(tmp + 1)
         Else
-            Item = pVals.Item(tmp.index + 1)
+            Item = pVals.Item(tmp + 1)
         End If
     End If
-    
-    Set tmp = Nothing
 End Property
 
 Public Function exists(key As Variant) As Boolean
-    Dim tmp As Nodes
-    Set tmp = pKeys.ceiling(key, True)
-    exists = False
     
-    If Not tmp Is Nothing Then
-        exists = tmp.value = key
-    End If
+    exists = pKeys.contains(key)
     
 End Function
 
@@ -156,7 +157,13 @@ Public Function RemoveAll()
 End Function
 
 Public Function Remove(e)
-    pKeys.Remove e
+    Dim tmp
+    tmp = pKeys.ceiling(e)
+
+    If Not IsNull(tmp) Then
+        pVals.Remove tmp + 1
+        pKeys.Remove e
+    End If
 End Function
 
 Public Function clear()
@@ -1739,7 +1746,7 @@ Public Function toJSON(Optional ByVal exportTo As String) As String
         Set fso = CreateObject("scripting.filesystemobject")
         
         Dim targPath As String
-        targPath = ThisWorkbook.Path & "\" & exportTo
+        targPath = ThisWorkbook.path & "\" & exportTo
         
         Dim ts As Object
         Set ts = fso.createtextfile(targPath)
