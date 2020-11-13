@@ -3,11 +3,10 @@
 '@author                                   Qiou Yang
 '@license                                  MIT
 '@dependency                               Lists, HashSets
-'@lastUpdate                               07.07.2020
-'                                          replace with HashSets
-'                                          add feed with shorten
-'
-'@TODO                                     add comments
+'@lastUpdate                               13.11.2020
+'                                          minor bugfix
+'                                          add documents
+'@TODO
 '                                          unify the Exception-Code
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -126,6 +125,7 @@ Public Function add(k, v) As Dicts
     Set add = Me
 End Function
 
+'Property of the HashMap
 Public Property Let Item(key As Variant, value As Variant)
     add key, value
 End Property
@@ -1145,11 +1145,14 @@ End Function
 Public Function reduceX(Optional ByVal callback As String = "callback", Optional initVal = 0)
 
     Dim i
+    Dim tmpCnt As Long
+    tmpCnt = 0
     
     Me.callbackKey = initVal
 
     For Each i In Me.Keys
-        Application.Run callback, Me, i, Me.Item(i), i
+        Application.Run callback, Me, i, Me.Item(i), tmpCnt
+        tmpCnt = tmpCnt + 1
     Next i
     
     If IsObject(pResKey) Then
@@ -1333,6 +1336,7 @@ Public Function mergeMap(ByVal operation, ByRef other As Dicts, Optional ByVal p
 
 End Function
 
+' handle the entries like  k -> [v1 v2 v3]
 Public Function ranged(ByVal operation As String, Optional ByVal placeholder As String = "_", Optional ByVal idx As String = "{i}", Optional ByVal placeholderInitialVal As String = "?", Optional ByVal replaceDecimalPoint As Boolean = True, Optional ByVal setNullValTo = 0, Optional ByVal initialVal As Variant = 0, Optional ByVal aggregate As Long = AggregateMethod.AggReduce) As Dicts
     
     Dim k
@@ -2049,3 +2053,4 @@ Public Function numericFromString(ByRef s As String, ByRef i As Long) As Double
         i = i + 1
     Loop
 End Function
+
