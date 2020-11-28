@@ -975,6 +975,10 @@ Public Function sliceX(Optional ByVal callback As String = "callback") As Lists
             Set tmp = New Lists
         Else
             tmp.add Me.getVal(i)
+            
+            If i = Me.length - 1 Then
+                res.add tmp
+            End If
         End If
     Next i
     
@@ -982,10 +986,6 @@ Public Function sliceX(Optional ByVal callback As String = "callback") As Lists
     Set res = Nothing
     Set tmp = Nothing
 End Function
-
-
-
-
 
 Public Function take(ByVal n As Long) As Lists
     n = IIf(n >= 0, n, Me.length + n)
