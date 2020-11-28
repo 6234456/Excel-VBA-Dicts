@@ -2,8 +2,8 @@
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               07.07.2020
-'                                          bugfix indexOf / add shuffle, length of the Lists is Long
+'@lastUpdate                               11.28.2020
+'                                          add sliceX
 '                                          unboxing by fromRng to load 1 by N as listed List
 '                                          remove destructor which may cause bug in 64 bit env,
 '                                          add support for Collection
@@ -958,6 +958,35 @@ Public Function filterX(Optional ByVal callback As String = "callback") As Lists
     Set res = Nothing
 End Function
 
+' signature of callback should be,
+' sub callback_judgement(byref l as Lists, e, optional byval i as Long)
+' update Me.callback
+
+Public Function sliceX(Optional ByVal callback As String = "callback") As Lists
+
+    Dim res As New Lists
+    Dim tmp As New Lists
+    Dim i
+
+    For i = 0 To Me.length - 1
+        Application.Run callback, Me, Me.getVal(i), i
+        If pRes Then
+            res.add tmp
+            Set tmp = New Lists
+        Else
+            tmp.add Me.getVal(i)
+        End If
+    Next i
+    
+    Set sliceX = res
+    Set res = Nothing
+    Set tmp = Nothing
+End Function
+
+
+
+
+
 Public Function take(ByVal n As Long) As Lists
     n = IIf(n >= 0, n, Me.length + n)
     Set take = Me.slice(0, n, 1)
@@ -1097,7 +1126,7 @@ End Function
 
 ' signature of callback should be,
 ' sub callback(byref l as Lists, e, optional byval i as Long)
-' update Me.modification as acc
+' update Me.callback as acc
 
 Public Function reduceX(Optional ByVal callback As String = "callback", Optional initVal = 0)
 
