@@ -3,9 +3,9 @@
 '@author                                   Qiou Yang
 '@license                                  MIT
 '@dependency                               Lists, HashSets
-'@lastUpdate                               13.11.2020
-'                                          minor bugfix
-'                                          add documents
+'@lastUpdate                               30.12.2020
+'                                          add leftJoin
+'                                          dump can preserve the StrKeys now
 '@TODO
 '                                          unify the Exception-Code
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -875,14 +875,19 @@ Public Sub unload(ByVal shtName As String, ByVal keyPos As Long, ByVal startingR
             End If
             
             For Each c In .Cells(startingRow, keyPos).Resize(endRow - startingRow + 1, 1).Cells
-                If exists(c.value) Then
-                    tmp = Item(c.value)
+            
+                If Me.exists(c.value) Then
+                    If pList.isLists(Item(c.value)) Then
+                        tmp = Item(c.value).toArray
+                    Else
+                        tmp = Item(c.value)
+                    End If
+                    
                     If IsArray(tmp) Then
                         If IsMissing(endCol) Or endCol = 0 Then
                             .Cells(c.row, startingCol).Resize(1, arrLen(tmp)).value = tmp
                         Else
-                             l = pList.fromArray(tmp, False).take(endCol - startingCol + 1).toArray
-                            .Cells(c.row, startingCol).Resize(1, arrLen(l)).value = l
+                            .Cells(c.row, startingCol).Resize(1, arrLen(l)).value = pList.fromArray(tmp, False).take(endCol - startingCol + 1).toArray
                         End If
                     Else
                         .Cells(c.row, startingCol).value = tmp
@@ -897,7 +902,13 @@ Public Sub unload(ByVal shtName As String, ByVal keyPos As Long, ByVal startingR
             
             For Each c In .Cells(keyPos, startingCol).Resize(1, endCol - startingCol + 1).Cells
                 If exists(c.value) Then
-                    tmp = Item(c.value)
+                
+                    If pList.isLists(Item(c.value)) Then
+                        tmp = Item(c.value).toArray
+                    Else
+                        tmp = Item(c.value)
+                    End If
+                    
                     If IsArray(tmp) Then
                         If IsMissing(endRow) Or endRow = 0 Then
                             .Cells(startingRow, c.Column).Resize(arrLen(tmp), 1).value = Application.WorksheetFunction.Transpose(tmp)
@@ -915,7 +926,9 @@ Public Sub unload(ByVal shtName As String, ByVal keyPos As Long, ByVal startingR
 
 End Sub
 
-Public Sub dump(ByVal shtName As String, Optional ByVal keyPos As Long = 1, Optional ByVal startingRow As Long = 1, Optional ByVal startingCol As Long = 2, Optional ByVal endRow As Long, Optional ByVal endCol As Long, Optional ByRef wb As Workbook, Optional ByVal isVertical As Boolean = True, Optional ByVal trailingRows As Long = 0, Optional ByVal withLabel As Boolean = False)
+' dump the dict to the sht
+' if dumpStrKeys set to true, to preserve the prefix 0s, 0123 write as 123 by default
+Public Sub dump(ByVal shtName As String, Optional ByVal keyPos As Long = 1, Optional ByVal startingRow As Long = 1, Optional ByVal startingCol As Long = 2, Optional ByVal endRow As Long, Optional ByVal endCol As Long, Optional ByRef wb As Workbook, Optional ByVal isVertical As Boolean = True, Optional ByVal trailingRows As Long = 0, Optional ByVal withLabel As Boolean = False, Optional ByVal dumpStrKeys As Boolean = False)
 
     With getTargetSht(shtName, wb)
         
@@ -931,15 +944,28 @@ Public Sub dump(ByVal shtName As String, Optional ByVal keyPos As Long = 1, Opti
                         .Cells(keyPos, startingCol + cnt) = k
                     End If
                 
-                    Me.Item(k).dump shtName, keyPos + 1, startingRow + cnt + 1, startingCol + 1, startingRow + cnt + Me.Item(k).Count(True), endCol, wb, isVertical, trailingRows, withLabel
+                    Me.Item(k).dump shtName, keyPos + 1, startingRow + cnt + 1, startingCol + 1, startingRow + cnt + Me.Item(k).Count(True), endCol, wb, isVertical, trailingRows, withLabel, dumpStrKeys
                     cnt = cnt + Me.Item(k).Count(True) + 1
                 Next k
             Else
+                Dim arrs
+                
+                If dumpStrKeys Then
+                    Dim l As New Lists
+                    
+                    l.addAll keysArr
+                    arrs = l.map("""'"" & ""_""").toArray
+                    
+                    Set l = Nothing
+                Else
+                    arrs = Me.keysArr
+                End If
+            
                  'unload the key
                 If isVertical Then
-                    .Cells(startingRow, keyPos).Resize(Me.Count, 1) = Application.WorksheetFunction.Transpose(Me.keysArr)
+                    .Cells(startingRow, keyPos).Resize(Me.Count, 1) = Application.WorksheetFunction.Transpose(arrs)
                 Else
-                    .Cells(keyPos, startingCol).Resize(1, Me.Count) = Me.keysArr
+                    .Cells(keyPos, startingCol).Resize(1, Me.Count) = arrs
                 End If
             
                 Me.unload shtName, keyPos, startingRow, startingCol, endRow, endCol, wb, isVertical
@@ -1136,6 +1162,39 @@ Public Function update(ByVal dict2 As Dicts) As Dicts
 
     Set update = Me.union(dict2, False)
     
+End Function
+
+Public Function leftJoin(ByRef dict2 As Dicts, Optional ByVal defaultByNull As Variant = 0) As Dicts
+    Dim k
+    
+    Dim res As New Dicts
+    
+    For Each k In Me.Keys
+        Dim l As New Lists
+        If l.isLists(Me.Item(k)) Or IsArray(Me.Item(k)) Then
+            l.addAll Me.Item(k)
+        Else
+            l.add Me.Item(k)
+        End If
+    
+        If dict2.exists(k) Then
+            If l.isLists(dict2.Item(k)) Or IsArray(dict2.Item(k)) Then
+                l.addAll dict2.Item(k)
+            Else
+                l.add dict2.Item(k)
+            End If
+        Else
+            l.add defaultByNull
+        End If
+        
+        res.add k, l
+        Set l = Nothing
+    Next k
+    
+    Set leftJoin = res
+    Set res = Nothing
+    
+
 End Function
 
 ' signature of callback should be,
@@ -1750,7 +1809,7 @@ Public Function toJSON(Optional ByVal exportTo As String) As String
         Set fso = CreateObject("scripting.filesystemobject")
         
         Dim targPath As String
-        targPath = ThisWorkbook.path & "\" & exportTo
+        targPath = ThisWorkbook.Path & "\" & exportTo
         
         Dim ts As Object
         Set ts = fso.createtextfile(targPath)
@@ -2053,4 +2112,3 @@ Public Function numericFromString(ByRef s As String, ByRef i As Long) As Double
         i = i + 1
     Loop
 End Function
-
