@@ -3,7 +3,9 @@
 '@author                                   Qiou Yang
 '@license                                  MIT
 '@dependency                               Lists, HashSets
-'@lastUpdate                               30.12.2020
+'@lastUpdate                               10.05.2021
+'                                          load-method loads only the columns specified by valCol in a preserved order
+'                                          Dicts has index (zero-based) als default label
 '                                          add leftJoin
 '                                          dump can preserve the StrKeys now
 '@TODO
@@ -307,7 +309,11 @@ Public Property Get valsArr() As Variant
         cnt = 0
         
         For Each k In Me.Keys
-            res(cnt) = Me.Item(k)
+            If IsObject(Me.Item(k)) Then
+                Set res(cnt) = Me.Item(k)
+            Else
+                res(cnt) = Me.Item(k)
+            End If
             cnt = cnt + 1
         Next k
     End If
@@ -706,18 +712,33 @@ End Function
 '           isVertical      vlook if true
 '''''''''''
 Public Function load(Optional ByVal sht As String = "", Optional ByVal KeyCol As Long = 1, Optional ByVal valCol = 1, Optional RowBegine As Variant = 1, Optional ByVal RowEnd As Variant, Optional ByRef wb As Workbook, Optional ByRef Reversed As Boolean = False, Optional ByRef asAddress As Boolean = False, Optional appendMode As Boolean = False, Optional ByVal isVertical As Boolean = True, Optional ByRef asText As Boolean = False) As Dicts
+    ' fetch columns with specified order of valCol
+    Dim valCol_ As Variant
+    If IsArray(valCol) Then
+        valCol_ = pList.fromArray(valCol).sort().toArray
+    Else
+        valCol_ = valCol
+    End If
+    
     Dim keyRng As Range
     Set keyRng = getRange(sht, KeyCol, KeyCol, RowBegine, RowEnd, wb, isVertical)
     
     Dim valRng As Range
-    Set valRng = getRange(sht, KeyCol, valCol, RowBegine, RowEnd, wb, isVertical)
+    Set valRng = getRange(sht, KeyCol, valCol_, RowBegine, RowEnd, wb, isVertical)
     
     If Count = 0 Or Not appendMode Then
         Set load = rngToDict(keyRng, valRng, Reversed, asAddress, asText)
     Else
-       Set load = union(createInstance(Me.rngToDict(keyRng, valRng, Reversed, asAddress, asText)))
+        Set load = union(createInstance(Me.rngToDict(keyRng, valRng, Reversed, asAddress, asText)))
     End If
-
+    
+    ' set default label and slice the chuck based on the valCol specified
+    If IsArray(valCol) Then
+        load.label = load.rng(valCol_(LBound(valCol_)), valCol_(UBound(valCol_)))
+        Set load = load.sliceWithLabel(valCol)
+        load.label = valCol
+    End If
+    
     Set keyRng = Nothing
     Set valRng = Nothing
     
@@ -1052,8 +1073,9 @@ End Function
 Public Function sliceWithLabel(nm) As Dicts
     If pIsLabeled Then
         Dim res As Dicts
-        
-        If TypeName(nm) = "String" Then
+        If TypeName(nm) = "Integer" Or TypeName(nm) = "Long" Then
+            Set sliceWithLabel = sliceWithLabel(nm & "")
+        ElseIf TypeName(nm) = "String" Then
             Dim i As Long
             i = pLabeledArray.Item(nm)
             
@@ -1088,7 +1110,32 @@ Public Function sliceWithLabel(nm) As Dicts
         Set sliceWithLabel = res
         Set res = Nothing
     Else
-        Set sliceWithLabel = Nothing
+        ' set default label
+        If Me.Count > 0 Then
+            Dim tmpV
+            tmpV = Me.valsArr
+            
+            If arrLen(tmpV) = 0 Then
+                Set sliceWithLabel = Nothing
+            Else
+                Dim myL
+                If TypeName(tmpV(0)) = "Lists" Then
+                    myL = tmpV(0).length
+                Else
+                    myL = arrLen(tmpV(0))
+                End If
+                
+                If myL = 0 Then
+                    Set sliceWithLabel = Nothing
+                Else
+                    Me.label = Me.rng(0, myL - 1)
+                    Set sliceWithLabel = sliceWithLabel(nm)
+                End If
+            End If
+        Else
+            Set sliceWithLabel = Nothing
+        End If
+        
     End If
 End Function
 
@@ -1261,7 +1308,7 @@ End Function
 
 ' signature of callback should be,
 ' sub callback_judgement(byref d as Dicts, k, v, optional byval i as Long)
-' update Me.callbackKey
+' update f.callbackKey
 
 Public Function filterX(Optional ByVal callback As String = "callback") As Dicts
 
@@ -1286,7 +1333,7 @@ End Function
 
 ' signature of callback should be,
 ' sub callback(byref d as Dicts, k, v, optional byval i as Long)
-' update Me.callbackVal / Me.callbackKey
+' update d.callbackVal / d.callbackKey
 
 Public Function mapX(Optional ByVal callback As String = "callback") As Dicts
     Dim res As New Dicts
@@ -1306,7 +1353,7 @@ End Function
 
 ' signature of callback should be,
 ' sub callback(byref d as Dicts, k, v_self, v_other, optional byval i as Long)
-' update Me.callbackVal / Me.callbackKey
+' update d.callbackVal / d.callbackKey
 
 Public Function productX(ByRef other As Dicts, Optional ByVal callback As String = "callback") As Dicts
 
@@ -1809,7 +1856,7 @@ Public Function toJSON(Optional ByVal exportTo As String) As String
         Set fso = CreateObject("scripting.filesystemobject")
         
         Dim targPath As String
-        targPath = ThisWorkbook.Path & "\" & exportTo
+        targPath = ThisWorkbook.path & "\" & exportTo
         
         Dim ts As Object
         Set ts = fso.createtextfile(targPath)
@@ -1883,7 +1930,11 @@ Public Function rng(ByVal start, ByVal ending, Optional ByVal steps As Long = 1)
         Next i
         rng = res
     Else
-        rng = Array()
+        If start = ending Then
+            rng = Array(start)
+        Else
+            rng = Array()
+        End If
     End If
 End Function
 
