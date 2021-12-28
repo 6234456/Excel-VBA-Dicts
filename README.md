@@ -11,7 +11,7 @@
 
 ## Basic Usage
 _**Example :**_ 
-* print out all the projects with a NPV > 5 to screen (discount rate 10%).
+* print out all the projects with NPV > 5 to screen (discount rate 10%).
 
 The spreadsheet "src" is as below.
 
@@ -32,6 +32,13 @@ The spreadsheet "src" is as below.
           
      End With
 ```
+
+## Features
+- Functional Programming (Map/Reduce/Filter/GroupBy/LeftJoin...)
+- MacOS-Excel Compatibility
+- Native Implementation of Collectionn with VBA (Dicts/Lists/Set)
+- JSON Support
+- Spreadsheet I/O
 
 ## Support or Contact
 Having trouble with this project? You can contact yang('__at__')qiou('__dot__')eu and I will help you sort it out.
