@@ -1,13 +1,13 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Dicts
-'@author                                   Qiou Yang
+'@author                                   Xiou Yang
 '@license                                  MIT
-'@dependency                               Lists, HashSets
-'@lastUpdate                               10.05.2021
-'                                          load-method loads only the columns specified by valCol in a preserved order
-'                                          Dicts has index (zero-based) als default label
-'                                          add leftJoin
-'                                          dump can preserve the StrKeys now
+'@dependency                               Lists, HashSets, Nodes
+'@lastUpdate                               20.04.2023
+'                                          groupBy with other AggrateMethod
+'                                          print also with the label
+'                                          fromRng now load the DataFrame
+'                                          filterX with label
 '@TODO
 '                                          unify the Exception-Code
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -326,6 +326,26 @@ End Property
 Public Property Get Keys() As Variant
     Keys = pKeys.toArray
 End Property
+
+
+Public Function fromRng(ByRef rng As Range, Optional ByVal hasHeading As Boolean = True) As Dicts
+
+    Set pList = pList.fromRng(rng)
+    
+    Dim res As Dicts
+    
+    If hasHeading And pList.length > 1 Then
+        Set res = pList.drop(1).toMap(True)
+        res.label = pList.getVal(0).toArray
+    Else
+        Set res = pList.toMap()
+    End If
+    
+    Set fromRng = res
+    Set res = Nothing
+    pList.clear
+    
+End Function
 
 
 ' transfer N * 2 Matrix into Dicts [[k,v]] -> Dicts(k, v)
@@ -1327,6 +1347,8 @@ Public Function filterX(Optional ByVal callback As String = "callback") As Dicts
         cnt = cnt + 1
     Next i
     
+    copyLabel Me, res
+    
     Set filterX = res
     Set res = Nothing
 End Function
@@ -1534,8 +1556,8 @@ Public Function groupBy(ByRef attr, ByVal valCol As Long, Optional ByVal aggrega
         Err.Raise 9998, , "at least one attribute should be contained"
     End If
 
-    If aggregateBy <> xlSum And aggregateBy <> xlCount Then
-        Err.Raise 9996, , "aggregateMethod unkown, should be xlCount or xlSum"
+    If aggregateBy <> xlSum And aggregateBy <> xlCount And aggregateBy <> "Average" And aggregateBy <> "Max" And aggregateBy <> "Min" Then
+        Err.Raise 9996, , "aggregateMethod unkown, should be xlCount or xlSum, 'Average', 'Min', 'Max'"
     End If
     
     ' lists of attributes
@@ -1581,13 +1603,50 @@ Public Function groupBy(ByRef attr, ByVal valCol As Long, Optional ByVal aggrega
             Set parent = cascading(res, nl.addAll(arr, False).take(i - LBound(arr)).toArray)
             e = arr(i)
             
+            ' for average
+            Dim accValue As Double
+            Dim accCnt As Integer
+            
             If parent.exists(e) Then
                 If i = ub Then
-                    parent.Item(e) = parent.Item(e) + IIf(aggregateBy = xlSum, valArr(cnt), IIf(aggregateBy = xlCount, 1, 0))
+                    If aggregateBy = xlSum Then
+                        parent.Item(e) = parent.Item(e) + valArr(cnt)
+                    ElseIf aggregateBy = xlCount Then
+                        parent.Item(e) = parent.Item(e) + 1
+                    ElseIf aggregateBy = "Average" Then
+                        accValue = accValue + valArr(cnt)
+                        accCnt = accCnt + 1
+                    
+                        parent.Item(e) = accValue / accCnt
+                    ElseIf aggregateBy = "Max" Then
+                        If parent.Item(e) < valArr(cnt) Then
+                            parent.Item(e) = valArr(cnt)
+                        End If
+                    ElseIf aggregateBy = "Min" Then
+                        If parent.Item(e) > valArr(cnt) Then
+                            parent.Item(e) = valArr(cnt)
+                        End If
+                    Else
+                    
+                    End If
                 End If
             Else
                 If i = ub Then
-                    parent.Item(e) = IIf(aggregateBy = xlSum, valArr(cnt), IIf(aggregateBy = xlCount, 1, 0))
+                    If aggregateBy = xlSum Then
+                        parent.Item(e) = valArr(cnt)
+                    ElseIf aggregateBy = xlCount Then
+                        parent.Item(e) = 1
+                    ElseIf aggregateBy = "Average" Then
+                        accValue = valArr(cnt)
+                        accCnt = 1
+                        parent.Item(e) = accValue / accCnt
+                    ElseIf aggregateBy = "Max" Then
+                        parent.Item(e) = valArr(cnt)
+                    ElseIf aggregateBy = "Min" Then
+                        parent.Item(e) = valArr(cnt)
+                    Else
+                    
+                    End If
                 Else
                     parent.add e, emptyInstance
                 End If
@@ -1730,7 +1789,14 @@ Public Function p()
 End Function
 
 Public Function toString() As String
-    toString = x_toString(Me)
+    
+    If Me.hasLabel Then
+        toString = pList.fromArray(Me.label.keysArr).toString() & Chr(10) & x_toString(Me)
+    Else
+        toString = x_toString(Me)
+    End If
+
+    
 End Function
 
 ' print iterables to screen
@@ -1851,7 +1917,7 @@ Public Function toJSON(Optional ByVal exportTo As String) As String
     res = x_toString(Me)
     
     toJSON = res
-    If Not IsMissing(exportTo) Then
+    If Not IsMissing(exportTo) And Len(Trim(exportTo)) > 0 Then
         Dim fso As Object
         Set fso = CreateObject("scripting.filesystemobject")
         
@@ -2163,3 +2229,4 @@ Public Function numericFromString(ByRef s As String, ByRef i As Long) As Double
         i = i + 1
     Loop
 End Function
+                                                                                                                 
