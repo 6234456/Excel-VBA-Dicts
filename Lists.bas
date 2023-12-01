@@ -2,11 +2,11 @@
 '@desc                                     Util Class Lists
 '@author                                   Qiou Yang
 '@license                                  MIT
-'@lastUpdate                               11.28.2020
+'@lastUpdate                               01.12.2023
 '                                          add sliceX
-'                                          unboxing by fromRng to load 1 by N as listed List
-'                                          remove destructor which may cause bug in 64 bit env,
-'                                          add support for Collection
+'                                          load and heading
+'                                          sliceBy
+'                                          toDicts = new Map() js
 '@TODO                                     optional params
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
@@ -20,6 +20,8 @@ Private pMaxLen As Long  ' the maximal length of array object
 Private pLen As Long     ' the length of current List Object
 
 Private pRes                ' res for the callback map/reduce/filter
+
+Private pHeading() As Variant
 
 Public Property Let callback(res)
     If IsObject(res) Then
@@ -40,6 +42,30 @@ End Property
 Public Property Get length() As Long
     length = pLen
 End Property
+
+Public Property Get heading() As Variant
+    heading = pHeading
+End Property
+
+Public Property Let heading(res)
+    pHeading = res
+End Property
+
+Public Function isOneDimensional() As Boolean
+    
+    If pLen = 0 Then
+        isOneDimensional = True
+    Else
+        If IsArray(pArr(0)) Then
+            isOneDimensional = False
+        ElseIf Me.isLists(pArr(0)) Then
+            isOneDimensional = False
+        Else
+            isOneDimensional = True
+        End If
+    End If
+
+End Function
 
 Public Function init() As Lists
     
@@ -64,6 +90,23 @@ Public Function toDict() As Dicts
 End Function
 
 '[[k, v]] -> Dict
+Public Function toDicts() As Dicts
+    Dim res As New Dicts
+    Dim i
+    
+    For i = 0 To pLen - 1
+        If IsArray(pArr(i)) Then
+            res.add pArr(i)(0), pArr(i)(1)
+        Else
+            res.add pArr(i).getVal(0), pArr(i).getVal(1)
+        End If
+    Next i
+    
+    Set toDicts = res
+    Set res = Nothing
+End Function
+
+' index to array
 Public Function toMap(Optional ByVal asArr As Boolean = False) As Dicts
     Dim res As New Dicts
   
@@ -142,10 +185,35 @@ Function shuffle() As Lists
 
 End Function
 
+Public Function load(ByVal rng As Range, Optional ByVal hasHeading As Boolean = True, Optional ByVal asAddress As Boolean = False) As Lists
+
+    If hasHeading Then
+        Set load = Me.fromRng(rng, "v", False, asAddress).drop(1)
+        load.heading = Me.fromRng(rng.Rows(1), "v", True).toArray
+    Else
+        Set load = Me.fromRng(rng, "v", False, asAddress)
+    End If
+
+
+End Function
+
+Public Function loadSht(ByVal shtName As String, Optional ByVal hasHeading As Boolean = True, Optional ByRef wb As Workbook = Nothing, Optional ByVal asAddress As Boolean = False) As Lists
+    
+    If wb Is Nothing Then
+       Set wb = ActiveWorkbook
+    End If
+
+   If shtName = "" Then
+        Set loadSht = load(ActiveSheet.UsedRange, hasHeading, asAddress)
+   Else
+        Set loadSht = load(wb.Worksheets(shtName).UsedRange, hasHeading, asAddress)
+   End If
+
+End Function
 
 'in case of 1 * N or N * 1 matrix and unboxing set to true, return 1-dimensional array
 
-Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String = "v", Optional ByVal unboxing As Boolean = True) As Lists
+Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String = "v", Optional ByVal unboxing As Boolean = True, Optional ByVal asAddress As Boolean = False) As Lists
     Dim res As New Lists
     
     Dim rowNum As Long
@@ -156,13 +224,21 @@ Public Function fromRng(ByRef rng As Range, Optional ByVal orientation As String
     Dim i
     
     If unboxing And (rowNum = 1 Or colNum = 1) Then
-        res.addAll rng
+        If asAddress Then
+            Dim c
+            For Each c In rng.Cells
+                res.add c.Address
+            Next c
+        Else
+            res.addAll rng
+        End If
     Else
         Dim tmp As New Lists
         
         For i = 1 To rowNum
-            res.add tmp.fromRng(rng.Rows(i))
+            res.add tmp.fromRng(rng.Rows(i), asAddress:=asAddress)
         Next i
+       
     End If
     
     If orientation = "h" Or orientation = "H" Then
@@ -368,6 +444,18 @@ Public Function add(ele, Optional ByVal keepOldElements As Boolean = True) As Li
     Set add = Me
 End Function
 
+Public Function repeat(ByVal ele, ByVal times As Integer) As Lists
+    Dim res As New Lists
+    Dim i
+    
+    For i = 1 To times
+        res.add ele
+    Next i
+    
+    Set repeat = res
+    Set res = Nothing
+    
+End Function
 
 Public Function Remove(ByVal ele) As Lists
     If Me.contains(ele) Then
@@ -406,6 +494,27 @@ Public Function replaceAllAt(ByVal eles, ByVal index As Long) As Lists
     Call override(res)
     Set replaceAllAt = Me
 End Function
+
+Public Function labelIndex(ByVal label As String) As Integer
+        
+        Dim e
+        Dim res As Integer
+        res = -1
+        Dim cnt As Integer
+        cnt = 0
+        
+        For Each e In pHeading
+            If e = label Then
+                res = cnt
+                Exit For
+            End If
+            cnt = cnt + 1
+        Next e
+        
+        labelIndex = res
+    
+End Function
+
 
 Public Function unshift(ParamArray l() As Variant) As Lists
     Set unshift = Me.addAllAt(l, 0)
@@ -958,6 +1067,97 @@ Public Function filterX(Optional ByVal callback As String = "callback") As Lists
     Set res = Nothing
 End Function
 
+Public Function flatten() As Lists
+
+    If pLen = 0 Then
+        Set flatten = Me
+    Else
+         Dim e
+         Dim cnt
+         cnt = 0
+         
+         Dim res As New Lists
+            
+        For Each e In pArr
+            res.addAll e
+            cnt = cnt + 1
+            If cnt = pLen Then
+                Exit For
+            End If
+        Next e
+        
+        Set flatten = res
+        Set res = Nothing
+    End If
+
+End Function
+
+Public Function sliceBy(arr) As Lists
+    
+    If Me.isEmptyList Then
+        Set sliceBy = Me
+    Else
+    
+        If Not IsArray(arr) Then
+            Err.Raise 98978, , "Array expected"
+        End If
+        
+        If UBound(arr) - LBound(arr) < 0 Then
+            Err.Raise 8978, , "At least 1 element expected"
+        End If
+        
+        
+        Dim tmp As Lists
+        Set tmp = Me.fromArray(pHeading)
+        
+        Dim indexArr()
+        ReDim indexArr(0 To UBound(arr) - LBound(arr))
+        Dim i
+        Dim cnt As Integer
+        cnt = 0
+        
+        For Each i In arr
+            indexArr(cnt) = tmp.indexOf(i)
+            If indexArr(cnt) = -1 Then
+                Err.Raise 8129, , "label not found: " & i
+            End If
+            cnt = cnt + 1
+        Next i
+        
+        Dim res As New Lists
+        Dim e
+        cnt = 0
+        
+        For Each e In pArr
+            Dim t As New Lists
+            If IsArray(e) Then
+                For Each i In indexArr
+                    t.add e(i)
+                Next i
+            Else
+                For Each i In indexArr
+                    t.add e.getVal(i)
+                Next i
+            End If
+            res.add t
+            Set t = Nothing
+            
+            cnt = cnt + 1
+            If cnt = pLen Then
+                Exit For
+            End If
+        Next e
+        
+        Set sliceBy = res
+        sliceBy.heading = arr
+        
+        Set res = Nothing
+        Set tmp = Nothing
+    End If
+
+End Function
+
+
 ' signature of callback should be,
 ' sub callback_judgement(byref l as Lists, e, optional byval i as Long)
 ' update Me.callback
@@ -1456,3 +1656,4 @@ Private Function sortX__(ByVal inLow As Long, ByVal inHi As Long, Optional ByVal
   If (tmpLow < inHi) Then sortX__ tmpLow, inHi, callback
 
 End Function
+
