@@ -1,9 +1,9 @@
  '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '@desc                                     Util Class Lists
-'@author                                   Qiou Yang
+'@author                                   Xiou Yang
 '@license                                  MIT
-'@lastUpdate                               01.12.2023
-'                                          add sliceX
+'@lastUpdate                               13.08.2024
+'                                          bugfix slice
 '                                          load and heading
 '                                          sliceBy
 '                                          toDicts = new Map() js
@@ -1381,40 +1381,33 @@ Public Function slice(Optional ByVal fromIndex, Optional ByVal toIndex, Optional
 
     Dim res As New Lists
     
+        If IsMissing(step) Then
+            step = 1
+        End If
     
-    If IsMissing(fromIndex) Then
-        fromIndex = 0
-    End If
-    
-    If IsMissing(toIndex) Then
-        toIndex = pLen
-    End If
-    
-     If IsMissing(step) Then
-        step = 1
-    End If
-    
-    If fromIndex < 0 Then
-        fromIndex = pLen + fromIndex
-    End If
-    
-    If toIndex < 0 Then
-        toIndex = pLen + toIndex
-    End If
-    
-    If fromIndex <> toIndex Then
-        Dim i As Long
+        If IsMissing(fromIndex) Then
+            fromIndex = IIf(step > 0, 0, pLen - 1)
+        ElseIf fromIndex < 0 Then
+            fromIndex = pLen + fromIndex
+            fromIndex = IIf(fromIndex < 0, 0, fromIndex)
+        End If
         
-        If step > 0 Then
-            For i = fromIndex To toIndex - 1 Step step
-                res.add pArr(i)
-            Next i
-        Else
-            For i = toIndex - 1 To fromIndex Step step
+        If IsMissing(toIndex) Then
+            toIndex = IIf(step > 0, pLen, -1)
+        ElseIf toIndex < 0 Then
+            toIndex = pLen + toIndex
+        End If
+
+        toIndex = IIf(toIndex > pLen, pLen, toIndex)
+        
+        If fromIndex < pLen And ((fromIndex > toIndex And step < 0) Or (fromIndex < toIndex And step > 0)) Then
+            Dim i As Long
+    
+            For i = fromIndex To toIndex - step Step step
                 res.add pArr(i)
             Next i
         End If
-    End If
+
     
     Set slice = res
 End Function
@@ -1656,4 +1649,3 @@ Private Function sortX__(ByVal inLow As Long, ByVal inHi As Long, Optional ByVal
   If (tmpLow < inHi) Then sortX__ tmpLow, inHi, callback
 
 End Function
-
