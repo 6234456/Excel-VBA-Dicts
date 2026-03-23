@@ -28,6 +28,12 @@ Public Sub RunAllProposedTests()
     TestDicts_Intersect
     TestDicts_Update
     TestDicts_LeftJoin
+    TestJSON_FromJSON_Primitives
+    TestJSON_FromJSON_Object
+    TestJSON_FromJSON_Array
+    TestJSON_FromJSON_Nested
+    TestJSON_FromJSON_Strings
+    TestJSON_RoundTrip
     TestDicts_FrequencyCount
     TestDicts_Nulls
     TestDicts_Remove
@@ -783,4 +789,177 @@ Public Sub TestTreeSets_CeilingBoundary()
     Debug.Assert IsNull(t2.ceiling(5))
 
     Debug.Print "TestTreeSets_CeilingBoundary passed"
+End Sub
+
+
+' =====================================================================
+' SECTION 28 – fromJSON: primitive values
+' =====================================================================
+Public Sub TestJSON_FromJSON_Primitives()
+    Dim d As New Dicts
+
+    ' null
+    Debug.Assert IsNull(d.fromJSON("null"))
+
+    ' booleans
+    Debug.Assert d.fromJSON("true") = True
+    Debug.Assert d.fromJSON("false") = False
+
+    ' integers
+    Debug.Assert d.fromJSON("0") = 0
+    Debug.Assert d.fromJSON("42") = 42
+    Debug.Assert d.fromJSON("-7") = -7
+
+    ' float
+    Debug.Assert Abs(d.fromJSON("3.14") - 3.14) < 0.0001
+
+    ' string
+    Debug.Assert d.fromJSON("""hello""") = "hello"
+
+    Debug.Print "TestJSON_FromJSON_Primitives passed"
+End Sub
+
+
+' =====================================================================
+' SECTION 29 – fromJSON: flat object
+' =====================================================================
+Public Sub TestJSON_FromJSON_Object()
+    Dim d As New Dicts
+    Dim json As String
+    json = "{""name"":""Alice"",""age"":30,""active"":true,""score"":9.5}"
+
+    Dim result As Dicts
+    Set result = d.fromJSON(json)
+
+    Debug.Assert result.Count = 4
+    Debug.Assert result.Item("name") = "Alice"
+    Debug.Assert result.Item("age") = 30
+    Debug.Assert result.Item("active") = True
+    Debug.Assert Abs(result.Item("score") - 9.5) < 0.0001
+
+    ' empty object
+    Dim empty As Dicts
+    Set empty = d.fromJSON("{}")
+    Debug.Assert empty.Count = 0
+
+    Debug.Print "TestJSON_FromJSON_Object passed"
+End Sub
+
+
+' =====================================================================
+' SECTION 30 – fromJSON: array
+' =====================================================================
+Public Sub TestJSON_FromJSON_Array()
+    Dim d As New Dicts
+    Dim result As Lists
+
+    Set result = d.fromJSON("[1,2,3]")
+    Debug.Assert result.length = 3
+    Debug.Assert result.getVal(0) = 1
+    Debug.Assert result.getVal(2) = 3
+
+    ' mixed-type array
+    Set result = d.fromJSON("[""a"",1,true,null]")
+    Debug.Assert result.length = 4
+    Debug.Assert result.getVal(0) = "a"
+    Debug.Assert result.getVal(1) = 1
+    Debug.Assert result.getVal(2) = True
+    Debug.Assert IsNull(result.getVal(3))
+
+    ' empty array
+    Set result = d.fromJSON("[]")
+    Debug.Assert result.length = 0
+
+    Debug.Print "TestJSON_FromJSON_Array passed"
+End Sub
+
+
+' =====================================================================
+' SECTION 31 – fromJSON: nested structures
+' =====================================================================
+Public Sub TestJSON_FromJSON_Nested()
+    Dim d As New Dicts
+    Dim json As String
+
+    ' object containing array
+    json = "{""items"":[10,20,30],""label"":""test""}"
+    Dim res As Dicts
+    Set res = d.fromJSON(json)
+    Debug.Assert res.Count = 2
+    Debug.Assert TypeName(res.Item("items")) = "Lists"
+    Debug.Assert res.Item("items").length = 3
+    Debug.Assert res.Item("items").getVal(1) = 20
+
+    ' array of objects
+    json = "[{""x"":1},{""x"":2}]"
+    Dim arr As Lists
+    Set arr = d.fromJSON(json)
+    Debug.Assert arr.length = 2
+    Debug.Assert TypeName(arr.getVal(0)) = "Dicts"
+    Debug.Assert arr.getVal(0).Item("x") = 1
+    Debug.Assert arr.getVal(1).Item("x") = 2
+
+    ' two-level nested object
+    json = "{""outer"":{""inner"":42}}"
+    Dim nested As Dicts
+    Set nested = d.fromJSON(json)
+    Debug.Assert TypeName(nested.Item("outer")) = "Dicts"
+    Debug.Assert nested.Item("outer").Item("inner") = 42
+
+    Debug.Print "TestJSON_FromJSON_Nested passed"
+End Sub
+
+
+' =====================================================================
+' SECTION 32 – fromJSON: string escape sequences
+' =====================================================================
+Public Sub TestJSON_FromJSON_Strings()
+    Dim d As New Dicts
+
+    ' standard escapes
+    Debug.Assert d.fromJSON("""tab:\there""") = "tab:" & Chr(9) & "here"
+    Debug.Assert d.fromJSON("""line\nbreak""") = "line" & Chr(10) & "break"
+    Debug.Assert d.fromJSON("""quote:\""""") = "quote:"""
+
+    ' \uXXXX Unicode escape (U+0041 = "A")
+    Debug.Assert d.fromJSON("""\u0041""") = "A"
+
+    ' whitespace around value is ignored
+    Debug.Assert d.fromJSON("  ""hello""  ") = "hello"
+
+    Debug.Print "TestJSON_FromJSON_Strings passed"
+End Sub
+
+
+' =====================================================================
+' SECTION 33 – fromJSON / toJSON round-trip
+' Serialise a Dicts with toJSON then parse back with fromJSON and
+' verify the values are preserved.
+' =====================================================================
+Public Sub TestJSON_RoundTrip()
+    Dim d As New Dicts
+    Dim l As New Lists
+
+    d.add "name", "Bob"
+    d.add "score", 7.5
+    d.add "active", False
+    d.add "tags", l.of("vba", "excel")
+
+    ' serialise
+    Dim json As String
+    json = d.toJSON
+
+    ' parse back
+    Dim d2 As Dicts
+    Set d2 = d.fromJSON(json)
+
+    Debug.Assert d2.Count = 4
+    Debug.Assert d2.Item("name") = "Bob"
+    Debug.Assert Abs(d2.Item("score") - 7.5) < 0.0001
+    Debug.Assert d2.Item("active") = False
+    Debug.Assert TypeName(d2.Item("tags")) = "Lists"
+    Debug.Assert d2.Item("tags").length = 2
+    Debug.Assert d2.Item("tags").getVal(0) = "vba"
+
+    Debug.Print "TestJSON_RoundTrip passed"
 End Sub
