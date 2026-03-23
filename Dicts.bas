@@ -1799,89 +1799,80 @@ Public Function toString() As String
     
 End Function
 
-' print iterables to screen
+' Serialise a VBA array to a JSON array string.
+' Uses a pre-allocated string array + Join to avoid O(n^2) concatenation.
 Private Function a_toString(ByVal arr As Variant, Optional ByVal lvl As Integer = 0) As String
-    
-    If arrLen(arr) = 0 Then
+    Dim n As Long
+    n = arrLen(arr)
+    If n = 0 Then
         a_toString = "[ ]"
-    Else
-        Dim res As String
-        Dim i
-        res = "[ "
-        
-        For Each i In arr
-            If IsDate(i) Or isBool(i) Or isEmpty(i) Or Not IsNumeric(i) Then
-                res = res & x_toString(i, lvl + 1) & ", "
-            Else
-                res = res & Replace(" " & i, ",", ".") & ", "
-            End If
-        Next i
-        
-        res = Left(res, Len(res) - 2)
-
-        a_toString = res & " ]"
+        Exit Function
     End If
 
+    Dim parts() As String
+    ReDim parts(0 To n - 1)
+    Dim i
+    Dim cnt As Long
+    cnt = 0
+    For Each i In arr
+        parts(cnt) = x_toString(i, lvl + 1)
+        cnt = cnt + 1
+    Next i
+
+    a_toString = "[ " & Join(parts, ", ") & " ]"
 End Function
 
+' Serialise a Dicts object to a JSON object string.
+' Uses a pre-allocated string array + Join to avoid O(n^2) concatenation.
+' Keys are indented with (lvl+1) tabs; the closing brace uses lvl tabs,
+' producing standard nested indentation.
 Private Function dicts_toString(d As Variant, Optional ByVal lvl As Integer = 0) As String
-
     If d.Count = 0 Then
         dicts_toString = "{ }"
-    Else
-        Dim res As String
-        Dim k
-        res = "{" & Chr(10)
-        
-        For Each k In d.Keys
-            res = res & String(lvl, Chr(9)) & """" & k & """" & Chr(9) & ":" & Chr(9) & x_toString(d.Item(k), lvl + 1) & "," & Chr(10)
-        Next k
-        
-        res = Left(res, Len(res) - 2)
-        
-        dicts_toString = res & Chr(10) & String(lvl, Chr(9)) & "}"
+        Exit Function
     End If
 
+    Dim parts() As String
+    ReDim parts(0 To d.Count - 1)
+    Dim indent As String
+    indent = String(lvl + 1, Chr(9))
+    Dim k
+    Dim cnt As Long
+    cnt = 0
+    For Each k In d.Keys
+        parts(cnt) = indent & """" & k & """: " & x_toString(d.Item(k), lvl + 1)
+        cnt = cnt + 1
+    Next k
+
+    dicts_toString = "{" & Chr(10) & _
+                     Join(parts, "," & Chr(10)) & Chr(10) & _
+                     String(lvl, Chr(9)) & "}"
 End Function
 
+' Convert any VBA value to its JSON representation.
+' ElseIf chain replaces the previous 7-level nested If block.
+' Fixes: numbers now go through Replace(CStr, ",", ".") so that
+' German-locale decimal commas are emitted as dots in all cases.
 Public Function x_toString(x As Variant, Optional ByVal lvl As Integer = 0) As String
-        
     If IsArray(x) Then
         x_toString = a_toString(x, lvl)
-    ElseIf Me.isDict(x) Then
+    ElseIf isDict(x) Then
         x_toString = dicts_toString(x, lvl)
+    ElseIf pList.isLists(x) Then
+        x_toString = a_toString(x.toArray, lvl)
+    ElseIf IsNull(x) Or isNothing(x) Or isEmpty(x) Then
+        x_toString = "null"
+    ElseIf IsDate(x) Then
+        ' a string that happens to satisfy IsDate is kept as-is;
+        ' a true Date value is formatted to yyyy-mm-dd
+        x_toString = """" & IIf(TypeName(x) = "String", x, Format(x, "yyyy-mm-dd")) & """"
+    ElseIf TypeName(x) = "Boolean" Then
+        x_toString = IIf(x, "true", "false")
+    ElseIf IsNumeric(x) Then
+        x_toString = Replace(CStr(x), ",", ".")
     Else
-        If pList.isLists(x) Then
-            x_toString = a_toString(x.toArray, lvl)
-        Else
-            If IsNull(x) Then
-                x_toString = "null"
-            Else
-                If isNothing(x) Or isEmpty(x) Then
-                    x_toString = "null"
-                Else
-                    If IsDate(x) Then
-                        '  date string can be both string and date
-                        
-                        If TypeName(x) = "String" Then
-                            x_toString = """" & x & """"
-                        Else
-                            x_toString = """" & Format(x, "yyyy-mm-dd") & """"
-                        End If
-                    Else
-                        If TypeName(x) = "Boolean" Then
-                            x_toString = IIf(x, "true", "false")
-                        ElseIf IsNumeric(x) Then
-                            x_toString = CStr(x)
-                        Else
-                            x_toString = """" & CStr(x) & """"
-                        End If
-                    End If
-                End If
-            End If
-        End If
+        x_toString = """" & CStr(x) & """"
     End If
-
 End Function
 
 Public Function pk()
