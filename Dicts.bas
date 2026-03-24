@@ -1799,89 +1799,80 @@ Public Function toString() As String
     
 End Function
 
-' print iterables to screen
+' Serialise a VBA array to a JSON array string.
+' Uses a pre-allocated string array + Join to avoid O(n^2) concatenation.
 Private Function a_toString(ByVal arr As Variant, Optional ByVal lvl As Integer = 0) As String
-    
-    If arrLen(arr) = 0 Then
+    Dim n As Long
+    n = arrLen(arr)
+    If n = 0 Then
         a_toString = "[ ]"
-    Else
-        Dim res As String
-        Dim i
-        res = "[ "
-        
-        For Each i In arr
-            If IsDate(i) Or isBool(i) Or isEmpty(i) Or Not IsNumeric(i) Then
-                res = res & x_toString(i, lvl + 1) & ", "
-            Else
-                res = res & Replace(" " & i, ",", ".") & ", "
-            End If
-        Next i
-        
-        res = Left(res, Len(res) - 2)
-
-        a_toString = res & " ]"
+        Exit Function
     End If
 
+    Dim parts() As String
+    ReDim parts(0 To n - 1)
+    Dim i
+    Dim cnt As Long
+    cnt = 0
+    For Each i In arr
+        parts(cnt) = x_toString(i, lvl + 1)
+        cnt = cnt + 1
+    Next i
+
+    a_toString = "[ " & Join(parts, ", ") & " ]"
 End Function
 
+' Serialise a Dicts object to a JSON object string.
+' Uses a pre-allocated string array + Join to avoid O(n^2) concatenation.
+' Keys are indented with (lvl+1) tabs; the closing brace uses lvl tabs,
+' producing standard nested indentation.
 Private Function dicts_toString(d As Variant, Optional ByVal lvl As Integer = 0) As String
-
     If d.Count = 0 Then
         dicts_toString = "{ }"
-    Else
-        Dim res As String
-        Dim k
-        res = "{" & Chr(10)
-        
-        For Each k In d.Keys
-            res = res & String(lvl, Chr(9)) & """" & k & """" & Chr(9) & ":" & Chr(9) & x_toString(d.Item(k), lvl + 1) & "," & Chr(10)
-        Next k
-        
-        res = Left(res, Len(res) - 2)
-        
-        dicts_toString = res & Chr(10) & String(lvl, Chr(9)) & "}"
+        Exit Function
     End If
 
+    Dim parts() As String
+    ReDim parts(0 To d.Count - 1)
+    Dim indent As String
+    indent = String(lvl + 1, Chr(9))
+    Dim k
+    Dim cnt As Long
+    cnt = 0
+    For Each k In d.Keys
+        parts(cnt) = indent & """" & k & """: " & x_toString(d.Item(k), lvl + 1)
+        cnt = cnt + 1
+    Next k
+
+    dicts_toString = "{" & Chr(10) & _
+                     Join(parts, "," & Chr(10)) & Chr(10) & _
+                     String(lvl, Chr(9)) & "}"
 End Function
 
+' Convert any VBA value to its JSON representation.
+' ElseIf chain replaces the previous 7-level nested If block.
+' Fixes: numbers now go through Replace(CStr, ",", ".") so that
+' German-locale decimal commas are emitted as dots in all cases.
 Public Function x_toString(x As Variant, Optional ByVal lvl As Integer = 0) As String
-        
     If IsArray(x) Then
         x_toString = a_toString(x, lvl)
-    ElseIf Me.isDict(x) Then
+    ElseIf isDict(x) Then
         x_toString = dicts_toString(x, lvl)
+    ElseIf pList.isLists(x) Then
+        x_toString = a_toString(x.toArray, lvl)
+    ElseIf IsNull(x) Or isNothing(x) Or isEmpty(x) Then
+        x_toString = "null"
+    ElseIf IsDate(x) Then
+        ' a string that happens to satisfy IsDate is kept as-is;
+        ' a true Date value is formatted to yyyy-mm-dd
+        x_toString = """" & IIf(TypeName(x) = "String", x, Format(x, "yyyy-mm-dd")) & """"
+    ElseIf TypeName(x) = "Boolean" Then
+        x_toString = IIf(x, "true", "false")
+    ElseIf IsNumeric(x) Then
+        x_toString = Replace(CStr(x), ",", ".")
     Else
-        If pList.isLists(x) Then
-            x_toString = a_toString(x.toArray, lvl)
-        Else
-            If IsNull(x) Then
-                x_toString = "null"
-            Else
-                If isNothing(x) Or isEmpty(x) Then
-                    x_toString = "null"
-                Else
-                    If IsDate(x) Then
-                        '  date string can be both string and date
-                        
-                        If TypeName(x) = "String" Then
-                            x_toString = """" & x & """"
-                        Else
-                            x_toString = """" & Format(x, "yyyy-mm-dd") & """"
-                        End If
-                    Else
-                        If TypeName(x) = "Boolean" Then
-                            x_toString = IIf(x, "true", "false")
-                        ElseIf IsNumeric(x) Then
-                            x_toString = CStr(x)
-                        Else
-                            x_toString = """" & CStr(x) & """"
-                        End If
-                    End If
-                End If
-            End If
-        End If
+        x_toString = """" & CStr(x) & """"
     End If
-
 End Function
 
 Public Function pk()
@@ -1915,26 +1906,324 @@ End Function
 Public Function toJSON(Optional ByVal exportTo As String) As String
     Dim res As String
     res = x_toString(Me)
-    
+
     toJSON = res
     If Not IsMissing(exportTo) And Len(Trim(exportTo)) > 0 Then
         Dim fso As Object
         Set fso = CreateObject("scripting.filesystemobject")
-        
+
         Dim targPath As String
         targPath = ThisWorkbook.path & "\" & exportTo
-        
+
         Dim ts As Object
         Set ts = fso.createtextfile(targPath)
-        
+
         ts.writeline res
         ts.Close
-        
+
         Set ts = Nothing
         Set fso = Nothing
         targPath = ""
     End If
-    
+
+End Function
+
+' =====================================================================
+' JSON Deserialiser  (fromJSON)
+'
+' Parses a JSON string back into VBA-native types:
+'   {}        ->  Dicts
+'   []        ->  Lists
+'   "string"  ->  String
+'   123       ->  Long  (Double if the value has a fractional part or exponent)
+'   true/false->  Boolean
+'   null      ->  Null
+'
+' Nested structures (objects inside arrays, arrays inside objects, …)
+' are handled recursively to any depth.
+'
+' All six JSON escape sequences (\", \\, \/, \n, \r, \t) and \uXXXX
+' Unicode escapes are decoded inside strings.
+'
+' Raises Err.Number 9100 with a position hint on any syntax error.
+'
+' Usage:
+'   Dim d As New Dicts
+'   Dim result As Variant
+'   result = d.fromJSON("{""name"":""Alice"",""age"":30}")
+'   ' result is a Dicts with keys "name" and "age"
+'
+'   Dim arr As Lists
+'   Set arr = d.fromJSON("[1, 2, 3]")
+' =====================================================================
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' Entry point.  Returns Variant so it can hold any JSON
+' value type (object, array, string, number, bool, null).
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Public Function fromJSON(ByVal jsonStr As String) As Variant
+    Dim pos As Long
+    pos = 1
+    json_skipWS jsonStr, pos
+
+    Dim result As Variant
+    json_readValue jsonStr, pos, result
+
+    If IsObject(result) Then
+        Set fromJSON = result
+    Else
+        fromJSON = result
+    End If
+End Function
+
+' Advance pos past whitespace characters.
+Private Sub json_skipWS(ByRef src As String, ByRef pos As Long)
+    Dim n As Long
+    n = Len(src)
+    Do While pos <= n
+        Select Case Mid(src, pos, 1)
+            Case " ", Chr(9), Chr(10), Chr(13)
+                pos = pos + 1
+            Case Else
+                Exit Do
+        End Select
+    Loop
+End Sub
+
+' Dispatch to the correct type parser based on the next character.
+' Sets result (ByRef Variant) so the caller can use Set or plain assign.
+Private Sub json_readValue(ByRef src As String, ByRef pos As Long, ByRef result As Variant)
+    json_skipWS src, pos
+    If pos > Len(src) Then
+        Err.Raise 9100, , "JSON SyntaxError: unexpected end of input at pos " & pos
+    End If
+
+    Dim ch As String
+    ch = Mid(src, pos, 1)
+    Select Case ch
+        Case "{"
+            Set result = json_parseObject(src, pos)
+        Case "["
+            Set result = json_parseArray(src, pos)
+        Case """"
+            result = json_parseString(src, pos)
+        Case "t", "f", "n"
+            result = json_parseLiteral(src, pos)
+        Case "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
+            result = json_parseNumber(src, pos)
+        Case Else
+            Err.Raise 9100, , "JSON SyntaxError: unexpected '" & ch & "' at pos " & pos
+    End Select
+End Sub
+
+' Parse a JSON object { "key": value, … } into a Dicts instance.
+Private Function json_parseObject(ByRef src As String, ByRef pos As Long) As Dicts
+    Dim res As New Dicts
+    pos = pos + 1                           ' consume '{'
+    json_skipWS src, pos
+
+    If Mid(src, pos, 1) = "}" Then
+        pos = pos + 1
+        Set json_parseObject = res
+        Exit Function
+    End If
+
+    Do
+        json_skipWS src, pos
+        If Mid(src, pos, 1) <> """" Then
+            Err.Raise 9100, , "JSON SyntaxError: expected string key at pos " & pos
+        End If
+        Dim key As String
+        key = json_parseString(src, pos)
+
+        json_skipWS src, pos
+        If Mid(src, pos, 1) <> ":" Then
+            Err.Raise 9100, , "JSON SyntaxError: expected ':' at pos " & pos
+        End If
+        pos = pos + 1                       ' consume ':'
+
+        Dim val As Variant
+        json_readValue src, pos, val
+        res.add key, val
+
+        json_skipWS src, pos
+        Select Case Mid(src, pos, 1)
+            Case ","
+                pos = pos + 1
+            Case "}"
+                pos = pos + 1
+                Exit Do
+            Case Else
+                Err.Raise 9100, , "JSON SyntaxError: expected ',' or '}' at pos " & pos
+        End Select
+    Loop
+
+    Set json_parseObject = res
+End Function
+
+' Parse a JSON array [ value, … ] into a Lists instance.
+Private Function json_parseArray(ByRef src As String, ByRef pos As Long) As Lists
+    Dim res As New Lists
+    pos = pos + 1                           ' consume '['
+    json_skipWS src, pos
+
+    If Mid(src, pos, 1) = "]" Then
+        pos = pos + 1
+        Set json_parseArray = res
+        Exit Function
+    End If
+
+    Do
+        Dim val As Variant
+        json_readValue src, pos, val
+        res.add val
+
+        json_skipWS src, pos
+        Select Case Mid(src, pos, 1)
+            Case ","
+                pos = pos + 1
+            Case "]"
+                pos = pos + 1
+                Exit Do
+            Case Else
+                Err.Raise 9100, , "JSON SyntaxError: expected ',' or ']' at pos " & pos
+        End Select
+    Loop
+
+    Set json_parseArray = res
+End Function
+
+' Parse a JSON string, decoding all standard escape sequences.
+Private Function json_parseString(ByRef src As String, ByRef pos As Long) As String
+    pos = pos + 1                           ' consume opening '"'
+    Dim res As String
+    res = ""
+    Dim n As Long
+    n = Len(src)
+
+    Do While pos <= n
+        Dim ch As String
+        ch = Mid(src, pos, 1)
+        Select Case ch
+            Case """"
+                pos = pos + 1
+                json_parseString = res
+                Exit Function
+            Case "\"
+                pos = pos + 1
+                If pos > n Then
+                    Err.Raise 9100, , "JSON SyntaxError: unterminated escape sequence"
+                End If
+                Dim esc As String
+                esc = Mid(src, pos, 1)
+                Select Case esc
+                    Case """" : res = res & """"
+                    Case "\"  : res = res & "\"
+                    Case "/"  : res = res & "/"
+                    Case "n"  : res = res & Chr(10)
+                    Case "r"  : res = res & Chr(13)
+                    Case "t"  : res = res & Chr(9)
+                    Case "b"  : res = res & Chr(8)
+                    Case "f"  : res = res & Chr(12)
+                    Case "u"
+                        If pos + 4 > n Then
+                            Err.Raise 9100, , "JSON SyntaxError: incomplete \uXXXX at pos " & pos
+                        End If
+                        res = res & ChrW(CLng("&H" & Mid(src, pos + 1, 4)))
+                        pos = pos + 4
+                    Case Else
+                        Err.Raise 9100, , "JSON SyntaxError: invalid escape '\'" & esc & "' at pos " & pos
+                End Select
+            Case Else
+                res = res & ch
+        End Select
+        pos = pos + 1
+    Loop
+
+    Err.Raise 9100, , "JSON SyntaxError: unterminated string"
+End Function
+
+' Parse a JSON number.
+' Returns Long for integers that fit in 32-bit range; Double otherwise.
+Private Function json_parseNumber(ByRef src As String, ByRef pos As Long) As Variant
+    Dim startPos As Long
+    startPos = pos
+    Dim n As Long
+    n = Len(src)
+    Dim isFloat As Boolean
+    isFloat = False
+    Dim c As String
+
+    If Mid(src, pos, 1) = "-" Then pos = pos + 1     ' optional leading minus
+
+    Do While pos <= n                                  ' integer digits
+        c = Mid(src, pos, 1)
+        If c >= "0" And c <= "9" Then
+            pos = pos + 1
+        Else
+            Exit Do
+        End If
+    Loop
+
+    If pos <= n And Mid(src, pos, 1) = "." Then        ' fractional part
+        isFloat = True
+        pos = pos + 1
+        Do While pos <= n
+            c = Mid(src, pos, 1)
+            If c >= "0" And c <= "9" Then pos = pos + 1 Else Exit Do
+        Loop
+    End If
+
+    If pos <= n Then                                   ' exponent
+        c = Mid(src, pos, 1)
+        If c = "e" Or c = "E" Then
+            isFloat = True
+            pos = pos + 1
+            If pos <= n Then
+                c = Mid(src, pos, 1)
+                If c = "+" Or c = "-" Then pos = pos + 1
+            End If
+            Do While pos <= n
+                c = Mid(src, pos, 1)
+                If c >= "0" And c <= "9" Then pos = pos + 1 Else Exit Do
+            Loop
+        End If
+    End If
+
+    Dim numStr As String
+    numStr = Mid(src, startPos, pos - startPos)
+
+    If isFloat Then
+        ' CDbl is locale-sensitive; replace the invariant JSON "." with the
+        ' system decimal separator before converting.
+        Dim decSep As String
+        decSep = Mid(CStr(1.5), 2, 1)      ' "." or "," depending on locale
+        json_parseNumber = CDbl(Replace(numStr, ".", decSep))
+    Else
+        Dim asDouble As Double
+        asDouble = Val(numStr)              ' Val() always uses "." -> safe
+        If asDouble >= -2147483648 And asDouble <= 2147483647 Then
+            json_parseNumber = CLng(asDouble)
+        Else
+            json_parseNumber = asDouble
+        End If
+    End If
+End Function
+
+' Parse one of the three JSON literals: null, true, false.
+Private Function json_parseLiteral(ByRef src As String, ByRef pos As Long) As Variant
+    If Mid(src, pos, 4) = "null" Then
+        json_parseLiteral = Null
+        pos = pos + 4
+    ElseIf Mid(src, pos, 4) = "true" Then
+        json_parseLiteral = True
+        pos = pos + 4
+    ElseIf Mid(src, pos, 5) = "false" Then
+        json_parseLiteral = False
+        pos = pos + 5
+    Else
+        Err.Raise 9100, , "JSON SyntaxError: unknown literal at pos " & pos
+    End If
 End Function
 
 ' ________________________________________Util Functions____________________________________________
@@ -2066,113 +2355,58 @@ Public Function letterToColNum(ByVal l As String) As Integer
     letterToColNum = Range(l & "1").Column
 End Function
 
-Public Function fromString(ByRef s As String, Optional ByRef i As Long = 1) As Variant
-    
-    skipSpace s, i
-    
-    Select Case Mid$(s, i, 1)
-    Case "["
-        Set fromString = listFromString(s, i)
-    Case "{"
-        Set fromString = dictFromString(s, i)
-    Case """", "'"
-        fromString = strFromString(s, i)
-    Case Else
-        fromString = elementFromString(s, i)
-    End Select
+' ---------------------------------------------------------------
+' fromString / dictFromString / listFromString / strFromString /
+' elementFromString / numericFromString
+'
+' These public functions predate fromJSON and are kept for backward
+' compatibility.  Their bodies now delegate to the same recursive-
+' descent helpers used by fromJSON so that both entry points share
+' one implementation.
+'
+' Behavioural differences preserved for compatibility:
+'   • strFromString still accepts single-quoted strings ('…')
+'     in addition to the standard double-quoted form.
+'   • numericFromString still returns Double (not Long/Double).
+'   • The optional position parameter i is still ByRef so callers
+'     that chain multiple calls continue to work unchanged.
+' ---------------------------------------------------------------
 
+Public Function fromString(ByRef s As String, Optional ByRef i As Long = 1) As Variant
+    skipSpace s, i
+
+    ' Single-quoted strings are not valid JSON; keep legacy support.
+    If Mid$(s, i, 1) = "'" Then
+        fromString = strFromString(s, i)
+        Exit Function
+    End If
+
+    Dim result As Variant
+    json_readValue s, i, result
+    If IsObject(result) Then
+        Set fromString = result
+    Else
+        fromString = result
+    End If
 End Function
 
 ' element at i is "{"
 Public Function dictFromString(ByRef s As String, Optional ByRef i As Long = 1) As Dicts
-    
-    Dim stack As New Lists
-    Dim res As New Dicts
-    Dim k As String
-    
     skipSpace s, i
-    
-    stack.add i
-    
-    i = i + 1
-    
-    Do
-    Select Case Mid$(s, i, 1)
-        Case "{"
-            stack.add i
-            i = i + 1
-            
-            skipSpace s, i
-            k = strFromString(s, i)
-            skipSpace s, i
-            res.add k, fromString(s, i)
-            
-            If i >= Len(s) Then GoTo endFunc
-          '  i = i - 1
-        Case ",", " ", VBA.vbCr, VBA.vbTab
-            i = i + 1
-        Case "}"
-            Set stack = stack.dropLast(1)
-            
-            i = i + 1
-            If stack.length = 0 Then GoTo endFunc
-        Case ":"
-            i = i + 1
-            res.add k, fromString(s, i)
-        Case Else
-            k = strFromString(s, i)
-    End Select
-    
-    Loop While i < Len(s)
-    
-endFunc:
-    Set dictFromString = res
-
+    Set dictFromString = json_parseObject(s, i)
 End Function
 
 ' element at i is "["
 Public Function listFromString(ByRef s As String, Optional ByRef i As Long = 1) As Lists
-    
-    Dim stack As New Lists
-    Dim res As New Lists
-    
     skipSpace s, i
-    
-    stack.add i
-    
-    i = i + 1
-    
-    Do
-    Select Case Mid$(s, i, 1)
-        Case "["
-            stack.add i
-            res.add listFromString(s, i)
-            
-            If i >= Len(s) Then GoTo endFunc
-            i = i - 1
-        Case "]"
-            Set stack = stack.dropLast(1)
-        
-            i = i + 1
-            If stack.length = 0 Then GoTo endFunc
-        Case ","
-            i = i + 1
-        Case Else
-            res.add fromString(s, i)
-    End Select
-    
-    Loop
-    
-endFunc:
-    Set listFromString = res
-    
+    Set listFromString = json_parseArray(s, i)
 End Function
 
+' Skips ASCII whitespace including line-feed (Chr(10)).
 Private Function skipSpace(ByRef s As String, Optional ByRef i As Long = 1)
-    
     Do
         Select Case Mid$(s, i, 1)
-        Case " ", VBA.vbCr, VBA.vbTab
+        Case " ", VBA.vbCr, VBA.vbTab, Chr(10)
             i = i + 1
         Case Else
             Exit Function
@@ -2181,52 +2415,39 @@ Private Function skipSpace(ByRef s As String, Optional ByRef i As Long = 1)
 End Function
 
 Public Function elementFromString(ByRef s As String, Optional ByRef i As Long = 1) As Variant
-    If Mid$(s, i, 4) = "true" Then
-        elementFromString = True
-        i = i + 4
-    ElseIf Mid$(s, i, 5) = "false" Then
-        elementFromString = False
-        i = i + 5
-    ElseIf Mid$(s, i, 4) = "null" Then
-        elementFromString = Null
-        i = i + 4
+    Dim ch As String
+    ch = Mid$(s, i, 1)
+    If ch = "t" Or ch = "f" Or ch = "n" Then
+        elementFromString = json_parseLiteral(s, i)
     Else
-        elementFromString = numericFromString(s, i)
+        elementFromString = json_parseNumber(s, i)
     End If
 End Function
 
-
+' Parses a quoted string.  Double-quoted strings are processed through
+' json_parseString so escape sequences (\n, \t, \uXXXX …) are decoded.
+' Single-quoted strings use a plain scan for backward compatibility.
 Public Function strFromString(ByRef s As String, ByRef i As Long) As String
-    Dim start As Long
-    start = i + 1
-    
-    Dim quotation As String
-    quotation = Mid$(s, i, 1)
-    
-    i = i + 1
-    
-    Do
-        If Mid$(s, i, 1) = quotation Then
-            strFromString = Mid$(s, start, i - start)
-            i = i + 1
-            Exit Function
-        End If
-        
+    If Mid$(s, i, 1) = """" Then
+        strFromString = json_parseString(s, i)
+    Else
+        ' Legacy single-quote path: no escape decoding.
+        Dim start As Long
+        start = i + 1
         i = i + 1
-    Loop
+        Do
+            If Mid$(s, i, 1) = "'" Then
+                strFromString = Mid$(s, start, i - start)
+                i = i + 1
+                Exit Function
+            End If
+            i = i + 1
+        Loop
+    End If
 End Function
 
+' Returns the number at position i as Double (legacy return type).
 Public Function numericFromString(ByRef s As String, ByRef i As Long) As Double
-    Dim start As Long
-    start = i
-    
-    Do
-        If Not InStr("-.0123456789 ", Mid$(s, i, 1)) > 0 Then
-            numericFromString = CDbl(Replace(Trim(Mid$(s, start, i - start)), ".", Application.DecimalSeparator))
-            Exit Function
-        End If
-        
-        i = i + 1
-    Loop
+    numericFromString = CDbl(json_parseNumber(s, i))
 End Function
                                                                                                                  
