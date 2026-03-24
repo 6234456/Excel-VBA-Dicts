@@ -127,6 +127,7 @@ End Function
 
 Public Function clear() As Lists
     Me.init
+    Set clear = Me
 End Function
 
 Private Sub Class_Initialize()
@@ -339,27 +340,24 @@ Public Function fromArray(arr, Optional ByVal iter As Boolean = True) As Lists
 End Function
 
 Private Function serial(ByVal start As Long, ByVal ending As Long, Optional ByVal steps As Long = 1) As Variant
-    Dim res()
     Dim cnt As Long
-    cnt = -1
-    Dim i As Long
-    
-    For i = start To ending Step steps
-        cnt = cnt + 1
-    Next i
-    
-    If cnt > -1 Then
-        ReDim res(0 To cnt)
-        
-        Dim cnt1 As Long
-        cnt1 = 0
-        
-        For i = start To ending Step steps
-            res(cnt1) = i
-            cnt1 = cnt1 + 1
-        Next i
+    Dim res()
+
+    If steps > 0 And start <= ending Then
+        cnt = (ending - start) \ steps
+    ElseIf steps < 0 And start >= ending Then
+        cnt = (start - ending) \ (-steps)
+    Else
+        serial = Array()
+        Exit Function
     End If
-    
+
+    ReDim res(0 To cnt)
+    Dim i As Long
+    For i = 0 To cnt
+        res(i) = start + i * steps
+    Next i
+
     serial = res
 End Function
 
@@ -466,18 +464,34 @@ Public Function Remove(ByVal ele) As Lists
 End Function
 
 Public Function removeAt(ByVal index As Long) As Lists
-    Dim res As New Lists
-    
-    Set res = Me.slice(, index).addList(Me.slice(index + 1))
-    Call override(res)
-    
+    Dim i As Long
+    For i = index To pLen - 2
+        If IsObject(pArr(i + 1)) Then
+            Set pArr(i) = pArr(i + 1)
+        Else
+            pArr(i) = pArr(i + 1)
+        End If
+    Next i
+    pLen = pLen - 1
     Set removeAt = Me
 End Function
 
 Public Function addAt(ByVal ele, ByVal index As Long) As Lists
-    Dim res As Lists
-    Set res = Me.slice(, index).add(ele).addList(Me.slice(index))
-    Call override(res)
+    Call check
+    Dim i As Long
+    For i = pLen - 1 To index Step -1
+        If IsObject(pArr(i)) Then
+            Set pArr(i + 1) = pArr(i)
+        Else
+            pArr(i + 1) = pArr(i)
+        End If
+    Next i
+    If IsObject(ele) Then
+        Set pArr(index) = ele
+    Else
+        pArr(index) = ele
+    End If
+    pLen = pLen + 1
     Set addAt = Me
 End Function
 
@@ -851,15 +865,15 @@ End Function
 Public Function containsAll(ByVal arr) As Boolean
     Dim res As Boolean
     res = True
-    
+
     Dim i
     For Each i In arr
         If Not Me.contains(i) Then
             res = False
             Exit For
-        Else
+        End If
     Next i
-    
+
     containsAll = res
 End Function
 
@@ -924,11 +938,10 @@ Public Function some(ByVal judgement As String, Optional ByVal placeholder As St
                 res = True
                 Exit For
             End If
+            cnt = cnt + 1
         Next i
-        
-        cnt = cnt + 1
     End If
-    
+
     some = res
 
 End Function
@@ -994,13 +1007,13 @@ Public Function mapList(ByVal operation As String, ByVal reduceOp As String, Opt
     
     If replaceDecimalPoint Then
         For Each i In Me.toArray
-            i = tmp.addAll(i).reduce(reduceOp, initialVal, placeholder, placeholderInitialVal, idx, replaceDecimalPoint)
+            i = tmp.addAll(i, False).reduce(reduceOp, initialVal, placeholder, placeholderInitialVal, idx, replaceDecimalPoint)
             res.add (Application.Evaluate(Replace(Replace(operation, placeholder, Replace("" & i, ",", ".")), idx, cnt & "")))
             cnt = cnt + 1
         Next i
     Else
         For Each i In Me.toArray
-            i = tmp.addAll(i).reduce(reduceOp, initialVal, placeholder, placeholderInitialVal, idx, replaceDecimalPoint)
+            i = tmp.addAll(i, False).reduce(reduceOp, initialVal, placeholder, placeholderInitialVal, idx, replaceDecimalPoint)
             res.add (Application.Evaluate(Replace(Replace(operation, placeholder, "" & i), idx, cnt & "")))
             cnt = cnt + 1
         Next i
